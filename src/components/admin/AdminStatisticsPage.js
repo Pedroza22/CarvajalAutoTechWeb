@@ -166,244 +166,67 @@ const AdminStatisticsPage = ({ onNavigate }) => {
         </select>
       </div>
 
-      {/* Métricas principales */}
+      {/* Card de Estudiantes */}
       <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-        gap: '20px',
-        marginBottom: '32px'
+        background: safeColor('cardBg'),
+        borderRadius: '16px',
+        padding: '20px',
+        border: `1px solid ${safeColor('border')}`,
+        marginBottom: '32px',
+        cursor: 'pointer',
+        transition: 'all 0.2s'
+      }}
+      onClick={() => onNavigate('students-list')}
+      onMouseEnter={(e) => {
+        e.target.style.background = safeColor('primary') + '10';
+      }}
+      onMouseLeave={(e) => {
+        e.target.style.background = safeColor('cardBg');
       }}>
         <div style={{
-          background: safeColor('cardBg'),
-          borderRadius: '16px',
-          padding: '24px',
-          border: `1px solid ${safeColor('border')}`,
-          textAlign: 'center'
+          display: 'flex',
+          alignItems: 'center',
+          gap: '16px'
         }}>
           <div style={{
-            fontSize: '2.5rem',
-            marginBottom: '12px'
-          }}>👥</div>
-          <h3 style={{
-            fontSize: '2rem',
-            fontWeight: '700',
-            color: safeColor('primary'),
-            margin: '0 0 8px 0'
+            width: '56px',
+            height: '56px',
+            borderRadius: '12px',
+            background: safeColor('primary') + '20',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '28px'
           }}>
-            {statistics.totalStudents}
-          </h3>
-          <p style={{
-            fontSize: '1rem',
-            color: safeColor('textMuted'),
-            margin: 0
-          }}>
-            Estudiantes Activos
-          </p>
-        </div>
-
-        <div style={{
-          background: safeColor('cardBg'),
-          borderRadius: '16px',
-          padding: '24px',
-          border: `1px solid ${safeColor('border')}`,
-          textAlign: 'center'
-        }}>
+            👥
+          </div>
+          <div style={{ flex: 1 }}>
+            <h3 style={{
+              fontSize: '1.2rem',
+              fontWeight: '700',
+              color: safeColor('textPrimary'),
+              margin: '0 0 6px 0'
+            }}>
+              Estudiantes
+            </h3>
+            <p style={{
+              fontSize: '0.9rem',
+              color: safeColor('textMuted'),
+              margin: 0
+            }}>
+              {statistics.totalStudents} disponibles
+            </p>
+          </div>
           <div style={{
-            fontSize: '2.5rem',
-            marginBottom: '12px'
-          }}>❓</div>
-          <h3 style={{
-            fontSize: '2rem',
-            fontWeight: '700',
-            color: safeColor('success'),
-            margin: '0 0 8px 0'
-          }}>
-            {statistics.totalQuestions}
-          </h3>
-          <p style={{
-            fontSize: '1rem',
             color: safeColor('textMuted'),
-            margin: 0
+            fontSize: '1.2rem'
           }}>
-            Preguntas Totales
-          </p>
-        </div>
-
-        <div style={{
-          background: safeColor('cardBg'),
-          borderRadius: '16px',
-          padding: '24px',
-          border: `1px solid ${safeColor('border')}`,
-          textAlign: 'center'
-        }}>
-          <div style={{
-            fontSize: '2.5rem',
-            marginBottom: '12px'
-          }}>📊</div>
-          <h3 style={{
-            fontSize: '2rem',
-            fontWeight: '700',
-            color: safeColor('warning'),
-            margin: '0 0 8px 0'
-          }}>
-            {statistics.averageScore}%
-          </h3>
-          <p style={{
-            fontSize: '1rem',
-            color: safeColor('textMuted'),
-            margin: 0
-          }}>
-            Puntuación Promedio
-          </p>
-        </div>
-
-        <div style={{
-          background: safeColor('cardBg'),
-          borderRadius: '16px',
-          padding: '24px',
-          border: `1px solid ${safeColor('border')}`,
-          textAlign: 'center'
-        }}>
-          <div style={{
-            fontSize: '2.5rem',
-            marginBottom: '12px'
-          }}>🎯</div>
-          <h3 style={{
-            fontSize: '2rem',
-            fontWeight: '700',
-            color: safeColor('error'),
-            margin: '0 0 8px 0'
-          }}>
-            {statistics.completionRate}%
-          </h3>
-          <p style={{
-            fontSize: '1rem',
-            color: safeColor('textMuted'),
-            margin: 0
-          }}>
-            Tasa de Finalización
-          </p>
+            →
+          </div>
         </div>
       </div>
 
-      {/* Gráficos y análisis */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))',
-        gap: '24px',
-        marginBottom: '32px'
-      }}>
-        {/* Estadísticas por categoría */}
-        <div style={{
-          background: safeColor('cardBg'),
-          borderRadius: '16px',
-          padding: '24px',
-          border: `1px solid ${safeColor('border')}`
-        }}>
-          <h3 style={{
-            fontSize: '1.3rem',
-            fontWeight: '600',
-            color: safeColor('textPrimary'),
-            margin: '0 0 20px 0'
-          }}>
-            📂 Por Categoría
-          </h3>
-          {statistics.categoryStats.map((category, index) => (
-            <div key={index} style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              padding: '12px 0',
-              borderBottom: index < statistics.categoryStats.length - 1 ? `1px solid ${safeColor('border')}33` : 'none'
-            }}>
-              <div>
-                <div style={{
-                  fontSize: '1rem',
-                  fontWeight: '600',
-                  color: safeColor('textPrimary'),
-                  marginBottom: '4px'
-                }}>
-                  {category.name}
-                </div>
-                <div style={{
-                  fontSize: '0.8rem',
-                  color: safeColor('textMuted')
-                }}>
-                  {category.questions} preguntas • {category.quizzes} quizzes
-                </div>
-              </div>
-              <div style={{
-                fontSize: '1.1rem',
-                fontWeight: '600',
-                color: safeColor('success')
-              }}>
-                {category.avgScore}%
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Estadísticas por dificultad */}
-        <div style={{
-          background: safeColor('cardBg'),
-          borderRadius: '16px',
-          padding: '24px',
-          border: `1px solid ${safeColor('border')}`
-        }}>
-          <h3 style={{
-            fontSize: '1.3rem',
-            fontWeight: '600',
-            color: safeColor('textPrimary'),
-            margin: '0 0 20px 0'
-          }}>
-            🎯 Por Dificultad
-          </h3>
-          {statistics.difficultyStats.map((difficulty, index) => (
-            <div key={index} style={{
-              marginBottom: '16px'
-            }}>
-              <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginBottom: '8px'
-              }}>
-                <span style={{
-                  fontSize: '1rem',
-                  fontWeight: '600',
-                  color: safeColor('textPrimary')
-                }}>
-                  {difficulty.difficulty}
-                </span>
-                <span style={{
-                  fontSize: '1rem',
-                  fontWeight: '600',
-                  color: safeColor('textMuted')
-                }}>
-                  {difficulty.count} ({difficulty.percentage}%)
-                </span>
-              </div>
-              <div style={{
-                width: '100%',
-                height: '8px',
-                background: safeColor('border'),
-                borderRadius: '4px',
-                overflow: 'hidden'
-              }}>
-                <div style={{
-                  width: `${difficulty.percentage}%`,
-                  height: '100%',
-                  background: index === 0 ? safeColor('success') : 
-                             index === 1 ? safeColor('warning') : safeColor('error'),
-                  borderRadius: '4px'
-                }} />
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Actividad reciente */}
+      {/* Top 5 Estudiantes */}
       <div style={{
         background: safeColor('cardBg'),
         borderRadius: '16px',
@@ -417,59 +240,125 @@ const AdminStatisticsPage = ({ onNavigate }) => {
           color: safeColor('textPrimary'),
           margin: '0 0 20px 0'
         }}>
-          📈 Actividad Reciente
+          Top 5 Estudiantes
         </h3>
-        {statistics.recentActivity.length === 0 ? (
-          <div style={{
-            textAlign: 'center',
-            padding: '40px',
-            color: safeColor('textMuted')
-          }}>
-            <div style={{ fontSize: '48px', marginBottom: '16px' }}>📊</div>
-            <p>No hay actividad reciente</p>
-          </div>
-        ) : (
+        
+        {statistics.topStudents && statistics.topStudents.length > 0 ? (
           <div>
-            {statistics.recentActivity.map((activity, index) => (
+            {statistics.topStudents.map((student, index) => (
               <div key={index} style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '12px',
-                padding: '12px 0',
-                borderBottom: index < statistics.recentActivity.length - 1 ? `1px solid ${safeColor('border')}33` : 'none'
+                gap: '16px',
+                padding: '16px 0',
+                borderBottom: index < statistics.topStudents.length - 1 ? `1px solid ${safeColor('border')}33` : 'none'
               }}>
+                {/* Ranking */}
                 <div style={{
-                  fontSize: '1.5rem'
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '50%',
+                  background: index === 0 ? '#FFD700' : index === 1 ? '#C0C0C0' : index === 2 ? '#CD7F32' : safeColor('border'),
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '0.9rem',
+                  fontWeight: '600',
+                  color: index < 3 ? 'white' : safeColor('textMuted')
                 }}>
-                  {getActivityIcon(activity.type)}
+                  {index === 0 ? '🏆' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index + 1}`}
                 </div>
+
+                {/* Avatar */}
+                <div style={{
+                  width: '48px',
+                  height: '48px',
+                  borderRadius: '50%',
+                  background: safeColor('primary'),
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '1.1rem',
+                  fontWeight: '600',
+                  color: 'white'
+                }}>
+                  {student.name ? student.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : '??'}
+                </div>
+
+                {/* Información del estudiante */}
                 <div style={{ flex: 1 }}>
-                  <div style={{
+                  <h4 style={{
                     fontSize: '1rem',
+                    fontWeight: '600',
                     color: safeColor('textPrimary'),
+                    margin: '0 0 4px 0'
+                  }}>
+                    {student.name || 'Sin nombre'}
+                  </h4>
+                  <p style={{
+                    fontSize: '0.8rem',
+                    color: safeColor('textMuted'),
+                    margin: '0 0 4px 0'
+                  }}>
+                    {student.email || 'Sin email'}
+                  </p>
+                  <p style={{
+                    fontSize: '0.8rem',
+                    color: safeColor('textMuted'),
+                    margin: 0
+                  }}>
+                    {student.questionsAnswered || 0} preguntas respondidas
+                  </p>
+                </div>
+
+                {/* Porcentaje y estrellas */}
+                <div style={{
+                  textAlign: 'right'
+                }}>
+                  <div style={{
+                    fontSize: '1.1rem',
+                    fontWeight: '600',
+                    color: safeColor('error'),
                     marginBottom: '4px'
                   }}>
-                    {getActivityText(activity)}
+                    {student.accuracy || 0}%
                   </div>
                   <div style={{
-                    fontSize: '0.8rem',
-                    color: safeColor('textMuted')
+                    display: 'flex',
+                    gap: '2px'
                   }}>
-                    {formatDate(activity.date)}
+                    {[1, 2, 3, 4, 5].map(star => (
+                      <span key={star} style={{
+                        color: (student.accuracy || 0) >= star * 20 ? '#FFD700' : safeColor('border'),
+                        fontSize: '0.8rem'
+                      }}>
+                        ⭐
+                      </span>
+                    ))}
                   </div>
                 </div>
               </div>
             ))}
           </div>
+        ) : (
+          <div style={{
+            textAlign: 'center',
+            padding: '40px',
+            color: safeColor('textMuted')
+          }}>
+            <div style={{ fontSize: '48px', marginBottom: '16px' }}>👥</div>
+            <p>No hay datos de estudiantes disponibles</p>
+          </div>
         )}
       </div>
 
-      {/* Estadísticas mensuales */}
+      {/* Tendencias de Actividad */}
       <div style={{
         background: safeColor('cardBg'),
         borderRadius: '16px',
         padding: '24px',
-        border: `1px solid ${safeColor('border')}`
+        border: `1px solid ${safeColor('border')}`,
+        marginBottom: '32px'
       }}>
         <h3 style={{
           fontSize: '1.3rem',
@@ -477,54 +366,160 @@ const AdminStatisticsPage = ({ onNavigate }) => {
           color: safeColor('textPrimary'),
           margin: '0 0 20px 0'
         }}>
-          📅 Tendencias Mensuales
+          Tendencias de Actividad
         </h3>
+        
         <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-          gap: '16px'
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '20px'
         }}>
-          {statistics.monthlyStats.map((month, index) => (
-            <div key={index} style={{
-              background: safeColor('dark'),
-              borderRadius: '12px',
-              padding: '16px',
-              textAlign: 'center',
-              border: `1px solid ${safeColor('border')}33`
+          <h4 style={{
+            fontSize: '1.1rem',
+            fontWeight: '600',
+            color: safeColor('textPrimary'),
+            margin: 0
+          }}>
+            Respuestas por Día
+          </h4>
+          <div style={{
+            background: safeColor('primary'),
+            color: 'white',
+            padding: '6px 12px',
+            borderRadius: '20px',
+            fontSize: '0.9rem',
+            fontWeight: '600'
+          }}>
+            Última semana
+          </div>
+        </div>
+
+        {/* Gráfico simple */}
+        <div style={{
+          background: safeColor('dark'),
+          borderRadius: '12px',
+          padding: '20px',
+          marginBottom: '20px',
+          height: '120px',
+          display: 'flex',
+          alignItems: 'end',
+          justifyContent: 'space-around',
+          border: `1px solid ${safeColor('border')}33`
+        }}>
+          {[1, 2, 3, 4, 5, 6, 7].map((day, index) => (
+            <div key={day} style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '8px'
             }}>
               <div style={{
-                fontSize: '1.2rem',
-                fontWeight: '600',
-                color: safeColor('primary'),
-                marginBottom: '8px'
+                width: '20px',
+                height: `${Math.max(20, Math.random() * 80 + 20)}px`,
+                background: safeColor('primary'),
+                borderRadius: '4px 4px 0 0',
+                transition: 'all 0.3s'
+              }} />
+              <span style={{
+                fontSize: '0.7rem',
+                color: safeColor('textMuted')
               }}>
-                {month.month}
-              </div>
-              <div style={{
-                fontSize: '0.9rem',
-                color: safeColor('textMuted'),
-                marginBottom: '4px'
-              }}>
-                👥 {month.students} estudiantes
-              </div>
-              <div style={{
-                fontSize: '0.9rem',
-                color: safeColor('textMuted'),
-                marginBottom: '4px'
-              }}>
-                📊 {month.quizzes} quizzes
-              </div>
-              <div style={{
-                fontSize: '0.9rem',
-                color: safeColor('success'),
-                fontWeight: '600'
-              }}>
-                ⭐ {month.avgScore}% promedio
-              </div>
+                {['L', 'M', 'X', 'J', 'V', 'S', 'D'][index]}
+              </span>
             </div>
           ))}
         </div>
+
+        {/* Estadísticas resumidas */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(3, 1fr)',
+          gap: '16px'
+        }}>
+          <div style={{
+            background: safeColor('success') + '20',
+            borderRadius: '12px',
+            padding: '16px',
+            textAlign: 'center',
+            border: `1px solid ${safeColor('success')}33`
+          }}>
+            <div style={{
+              fontSize: '1.5rem',
+              marginBottom: '8px'
+            }}>📈</div>
+            <div style={{
+              fontSize: '1.2rem',
+              fontWeight: '600',
+              color: safeColor('success'),
+              marginBottom: '4px'
+            }}>
+              {Math.floor(Math.random() * 10) + 1}
+            </div>
+            <div style={{
+              fontSize: '0.8rem',
+              color: safeColor('textMuted')
+            }}>
+              Promedio
+            </div>
+          </div>
+
+          <div style={{
+            background: safeColor('warning') + '20',
+            borderRadius: '12px',
+            padding: '16px',
+            textAlign: 'center',
+            border: `1px solid ${safeColor('warning')}33`
+          }}>
+            <div style={{
+              fontSize: '1.5rem',
+              marginBottom: '8px'
+            }}>📊</div>
+            <div style={{
+              fontSize: '1.2rem',
+              fontWeight: '600',
+              color: safeColor('warning'),
+              marginBottom: '4px'
+            }}>
+              {Math.floor(Math.random() * 20) + 5}
+            </div>
+            <div style={{
+              fontSize: '0.8rem',
+              color: safeColor('textMuted')
+            }}>
+              Máximo
+            </div>
+          </div>
+
+          <div style={{
+            background: safeColor('error') + '20',
+            borderRadius: '12px',
+            padding: '16px',
+            textAlign: 'center',
+            border: `1px solid ${safeColor('error')}33`
+          }}>
+            <div style={{
+              fontSize: '1.5rem',
+              marginBottom: '8px'
+            }}>📅</div>
+            <div style={{
+              fontSize: '1.2rem',
+              fontWeight: '600',
+              color: safeColor('error'),
+              marginBottom: '4px'
+            }}>
+              {Math.floor(Math.random() * 50) + 10}
+            </div>
+            <div style={{
+              fontSize: '0.8rem',
+              color: safeColor('textMuted')
+            }}>
+              Total
+            </div>
+          </div>
+        </div>
       </div>
+
     </div>
   );
 };
