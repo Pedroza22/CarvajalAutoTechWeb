@@ -2,6 +2,15 @@ import { supabase } from './supabase';
 
 class StatisticsService {
   /**
+   * Alias para getAdminStatistics para compatibilidad
+   * @param {string} period - Período de tiempo ('7d', '30d', '90d', '1y')
+   * @returns {Promise<Object>} Estadísticas del sistema
+   */
+  async getAdminStats(period = '30d') {
+    return this.getAdminStatistics(period);
+  }
+
+  /**
    * Obtiene estadísticas generales del sistema para administradores
    * @param {string} period - Período de tiempo ('7d', '30d', '90d', '1y')
    * @returns {Promise<Object>} Estadísticas del sistema
@@ -17,13 +26,15 @@ class StatisticsService {
         categoryStats,
         topStudents,
         trends
-      ] = await Promise.all([
+      ] = await Promise.allSettled([
         this.getOverallStats(),
         this.getTotalStudents(),
         this.getCategoryStatsFromView(),
         this.getTopStudentsFromView(),
         this.getTrendsFromView()
-      ]);
+      ]).then(results => results.map(result => 
+        result.status === 'fulfilled' ? result.value : null
+      ));
 
       const statistics = {
         totalStudents,
@@ -32,6 +43,7 @@ class StatisticsService {
         totalQuizzes: overallStats?.completedQuizzes || 0,
         averageScore: overallStats?.averageAccuracy || 0,
         completionRate: overallStats?.completionRate || 0,
+        topStudents: topStudents || [],
         recentActivity: this.formatRecentActivity(trends),
         categoryStats,
         difficultyStats: this.formatDifficultyStats(categoryStats),
@@ -80,11 +92,14 @@ class StatisticsService {
     try {
       const { data, error } = await supabase
         .from('stats_overall')
-        .select('*')
-        .single();
+        .select('*');
 
       if (error) throw error;
-      return data;
+      // Si hay múltiples filas, tomar la primera o sumar los valores
+      if (data && data.length > 0) {
+        return data[0]; // Tomar la primera fila
+      }
+      return null;
     } catch (error) {
       console.error('Error obteniendo estadísticas generales:', error);
       return null;
@@ -541,12 +556,26 @@ class StatisticsService {
    * Convierte el formato de mes a nombre legible
    */
   getMonthName(monthKey) {
-    const [year, month] = monthKey.split('-');
-    const monthNames = [
-      'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
-      'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'
-    ];
-    return monthNames[parseInt(month) - 1] || 'Mes';
+    // Si monthKey es un número (índice de mes), usarlo directamente
+    if (typeof monthKey === 'number') {
+      const monthNames = [
+        'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
+        'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'
+      ];
+      return monthNames[monthKey] || 'Mes';
+    }
+    
+    // Si monthKey es un string con formato "YYYY-MM", parsearlo
+    if (typeof monthKey === 'string' && monthKey.includes('-')) {
+      const [year, month] = monthKey.split('-');
+      const monthNames = [
+        'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
+        'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'
+      ];
+      return monthNames[parseInt(month) - 1] || 'Mes';
+    }
+    
+    return 'Mes';
   }
 
   /**
