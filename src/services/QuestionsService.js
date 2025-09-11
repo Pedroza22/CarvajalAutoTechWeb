@@ -1,184 +1,201 @@
 import { supabase } from './supabase';
 
 class QuestionsService {
-  /**
-   * Obtener todas las preguntas (admin: solo las suyas, student: solo lectura)
-   */
+  // Obtener todas las preguntas
   async getQuestions() {
     try {
+      console.log('🔍 Obteniendo todas las preguntas...');
+      
       const { data, error } = await supabase
         .from('questions')
-        .select('*')
+        .select(`
+          *,
+          categories (
+            name
+          )
+        `)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Error obteniendo preguntas:', error);
+        throw error;
+      }
+
+      console.log('✅ Preguntas obtenidas:', data?.length || 0);
       return data || [];
     } catch (error) {
-      console.error('❌ Error obteniendo preguntas:', error);
-      throw new Error(`Error obteniendo preguntas: ${error.message}`);
+      console.error('❌ Error en getQuestions:', error);
+      throw error;
     }
   }
 
-  /**
-   * Obtener preguntas por categoría
-   */
-  async getQuestionsByCategory(categoryId) {
+  // Obtener pregunta por ID
+  async getQuestionById(questionId) {
     try {
+      console.log('🔍 Obteniendo pregunta por ID:', questionId);
+      
       const { data, error } = await supabase
         .from('questions')
-        .select('*')
-        .eq('category_id', categoryId)
-        .order('created_at', { ascending: false });
+        .select(`
+          *,
+          categories (
+            name
+          )
+        `)
+        .eq('id', questionId)
+        .single();
 
-      if (error) throw error;
-      return data || [];
+      if (error) {
+        console.error('❌ Error obteniendo pregunta:', error);
+        throw error;
+      }
+
+      console.log('✅ Pregunta obtenida:', data);
+      return data;
     } catch (error) {
-      console.error('❌ Error obteniendo preguntas por categoría:', error);
-      throw new Error(`Error obteniendo preguntas por categoría: ${error.message}`);
+      console.error('❌ Error en getQuestionById:', error);
+      throw error;
     }
   }
 
-  /**
-   * Crear una nueva pregunta (solo admins)
-   */
-  async createQuestion(questionForm) {
+  // Crear nueva pregunta
+  async createQuestion(questionData) {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Usuario no autenticado');
-
+      console.log('🔍 Creando nueva pregunta...');
+      
       const { data, error } = await supabase
         .from('questions')
         .insert({
-          category_id: questionForm.categoryId,
-          type: questionForm.type,
-          question: questionForm.question,
-          options: questionForm.options,
-          correct_answer: questionForm.correctAnswer,
-          time_limit: questionForm.timeLimit,
-          image_url: questionForm.imageUrl, // Soporte para imágenes
-          explanation: questionForm.explanation,
-          created_by: user.id,
+          category_id: questionData.categoryId,
+          type: questionData.type,
+          question: questionData.question,
+          options: questionData.options,
+          correct_answer: questionData.correctAnswer,
+          time_limit: questionData.timeLimit,
+          image_url: questionData.imageUrl,
+          explanation: questionData.explanation,
+          created_by: questionData.createdBy
         })
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Error creando pregunta:', error);
+        throw error;
+      }
+
+      console.log('✅ Pregunta creada:', data);
       return data;
     } catch (error) {
-      console.error('❌ Error creando pregunta:', error);
-      throw new Error(`Error creando pregunta: ${error.message}`);
+      console.error('❌ Error en createQuestion:', error);
+      throw error;
     }
   }
 
-  /**
-   * Actualizar pregunta (solo admins dueños de la pregunta)
-   */
-  async updateQuestion(questionForm) {
-    if (!questionForm.id) {
-      throw new Error('ID requerido para actualizar la pregunta');
-    }
-
+  // Actualizar pregunta
+  async updateQuestion(questionId, questionData) {
     try {
+      console.log('🔍 Actualizando pregunta:', questionId);
+      
       const { data, error } = await supabase
         .from('questions')
         .update({
-          category_id: questionForm.categoryId,
-          type: questionForm.type,
-          question: questionForm.question,
-          options: questionForm.options,
-          correct_answer: questionForm.correctAnswer,
-          time_limit: questionForm.timeLimit,
-          image_url: questionForm.imageUrl,
-          explanation: questionForm.explanation,
+          category_id: questionData.categoryId,
+          type: questionData.type,
+          question: questionData.question,
+          options: questionData.options,
+          correct_answer: questionData.correctAnswer,
+          time_limit: questionData.timeLimit,
+          image_url: questionData.imageUrl,
+          explanation: questionData.explanation
         })
-        .eq('id', questionForm.id)
+        .eq('id', questionId)
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Error actualizando pregunta:', error);
+        throw error;
+      }
+
+      console.log('✅ Pregunta actualizada:', data);
       return data;
     } catch (error) {
-      console.error('❌ Error actualizando pregunta:', error);
-      throw new Error(`Error actualizando pregunta: ${error.message}`);
+      console.error('❌ Error en updateQuestion:', error);
+      throw error;
     }
   }
 
-  /**
-   * Eliminar pregunta (solo admins dueños de la pregunta)
-   */
+  // Eliminar pregunta
   async deleteQuestion(questionId) {
     try {
+      console.log('🔍 Eliminando pregunta:', questionId);
+      
       const { error } = await supabase
         .from('questions')
         .delete()
         .eq('id', questionId);
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Error eliminando pregunta:', error);
+        throw error;
+      }
+
+      console.log('✅ Pregunta eliminada');
       return true;
     } catch (error) {
-      console.error('❌ Error eliminando pregunta:', error);
-      throw new Error(`Error eliminando pregunta: ${error.message}`);
+      console.error('❌ Error en deleteQuestion:', error);
+      throw error;
     }
   }
 
-  /**
-   * Obtener pregunta por ID
-   */
-  async getQuestionById(id) {
+  // Obtener preguntas por categoría
+  async getQuestionsByCategory(categoryId) {
     try {
-      const { data, error } = await supabase
-        .from('questions')
-        .select('*')
-        .eq('id', id)
-        .single();
-
-      if (error) throw error;
-      return data;
-    } catch (error) {
-      console.error('❌ Error obteniendo pregunta:', error);
-      throw new Error(`Error obteniendo pregunta: ${error.message}`);
-    }
-  }
-
-  /**
-   * Obtener preguntas para un quiz (con límite y aleatorización)
-   */
-  async getQuestionsForQuiz(categoryId, limit = 10) {
-    try {
-      const { data, error } = await supabase
-        .from('questions')
-        .select('*')
-        .eq('category_id', categoryId)
-        .eq('is_active', true)
-        .limit(limit);
-
-      if (error) throw error;
+      console.log('🔍 Obteniendo preguntas por categoría:', categoryId);
       
-      // Aleatorizar las preguntas
-      const shuffled = (data || []).sort(() => Math.random() - 0.5);
-      return shuffled;
+      const { data, error } = await supabase
+        .from('questions')
+        .select(`
+          *,
+          categories (
+            name
+          )
+        `)
+        .eq('category_id', categoryId)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('❌ Error obteniendo preguntas por categoría:', error);
+        throw error;
+      }
+
+      console.log('✅ Preguntas por categoría obtenidas:', data?.length || 0);
+      return data || [];
     } catch (error) {
-      console.error('❌ Error obteniendo preguntas para quiz:', error);
-      throw new Error(`Error obteniendo preguntas para quiz: ${error.message}`);
+      console.error('❌ Error en getQuestionsByCategory:', error);
+      throw error;
     }
   }
 
-  /**
-   * Validar respuesta de una pregunta
-   */
-  validateAnswer(question, userAnswer) {
-    if (!question || !userAnswer) return false;
-    
-    switch (question.type) {
-      case 'multiple_choice':
-        return question.correct_answer === userAnswer;
-      case 'true_false':
-        return question.correct_answer === userAnswer;
-      case 'text':
-        return question.correct_answer.toLowerCase().trim() === userAnswer.toLowerCase().trim();
-      default:
-        return false;
-    }
+  // Función auxiliar para formatear tipo de pregunta
+  formatQuestionType(type) {
+    const typeMap = {
+      'multiple_choice': 'Opción Múltiple',
+      'true_false': 'Verdadero/Falso',
+      'free_text': 'Texto Libre'
+    };
+    return typeMap[type] || type;
+  }
+
+  // Función auxiliar para obtener icono según tipo
+  getQuestionTypeIcon(type) {
+    const iconMap = {
+      'multiple_choice': '🔘',
+      'true_false': '☑️',
+      'free_text': '📝'
+    };
+    return iconMap[type] || '❓';
   }
 }
 

@@ -114,7 +114,7 @@ class StudentsService {
       // Obtener información básica del estudiante
       const { data: student, error: studentError } = await supabase
         .from('app_users_enriched')
-        .select('id, email, full_name, raw_user_meta_data, created_at')
+        .select('id, email, full_name, raw_user_meta_data')
         .eq('id', studentId)
         .single();
 
@@ -190,11 +190,7 @@ class StudentsService {
         id: student.id,
         name: this.getDisplayName(student),
         email: student.email,
-        joinedDate: new Date(student.created_at).toLocaleDateString('es-ES', {
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric'
-        }),
+        joinedDate: 'Fecha no disponible', // La vista app_users_enriched no tiene created_at
         totalAnswers: stats.totalAnswers,
         overallAccuracy: stats.accuracy,
         lastActivity: stats.lastActivity,

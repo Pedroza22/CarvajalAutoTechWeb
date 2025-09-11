@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 
 class SupabaseConfig {
   static get url() {
-    return process.env.REACT_APP_SUPABASE_URL || 'http://72.60.53.240:8000/';
+    return process.env.REACT_APP_SUPABASE_URL || 'https://supabase.carvajalautotech.com';
   }
 
   static get anonKey() {

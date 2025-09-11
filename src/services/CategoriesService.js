@@ -1,9 +1,34 @@
 import { supabase } from './supabase';
 
 class CategoriesService {
+  // Obtener todas las categorías
+  async getAllCategories() {
+    try {
+      console.log('🔍 Obteniendo todas las categorías...');
+      
+      const { data, error } = await supabase
+        .from('categories')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('❌ Error obteniendo categorías:', error);
+        throw error;
+      }
+
+      console.log('✅ Categorías obtenidas:', data?.length || 0);
+      return data || [];
+    } catch (error) {
+      console.error('❌ Error en getAllCategories:', error);
+      throw error;
+    }
+  }
+
+  // Obtener categorías activas
   async getActiveCategories() {
     try {
-      console.log('🔍 Buscando categorías activas...');
+      console.log('🔍 Obteniendo categorías activas...');
+      
       const { data, error } = await supabase
         .from('categories')
         .select('*')
@@ -11,19 +36,103 @@ class CategoriesService {
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('❌ Error en query de categorías:', error);
+        console.error('❌ Error obteniendo categorías activas:', error);
         throw error;
       }
-      
-      console.log('✅ Categorías encontradas:', data?.length || 0, data);
+
+      console.log('✅ Categorías activas obtenidas:', data?.length || 0);
       return data || [];
     } catch (error) {
-      console.error('❌ Error obteniendo categorías:', error);
-      return [];
+      console.error('❌ Error en getActiveCategories:', error);
+      throw error;
     }
   }
 
-  // Nuevo: Obtener categorías asignadas a un estudiante específico
+  // Crear nueva categoría
+  async createCategory(categoryData) {
+    try {
+      console.log('🔍 Creando nueva categoría...');
+      
+      const { data, error } = await supabase
+        .from('categories')
+        .insert({
+          name: categoryData.name,
+          description: categoryData.description,
+          color: categoryData.color || '#6366f1',
+          icon: categoryData.icon,
+          created_by: categoryData.createdBy
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('❌ Error creando categoría:', error);
+        throw error;
+      }
+
+      console.log('✅ Categoría creada:', data);
+      return data;
+    } catch (error) {
+      console.error('❌ Error en createCategory:', error);
+      throw error;
+    }
+  }
+
+  // Actualizar categoría
+  async updateCategory(categoryId, categoryData) {
+    try {
+      console.log('🔍 Actualizando categoría:', categoryId);
+      
+      const { data, error } = await supabase
+        .from('categories')
+        .update({
+          name: categoryData.name,
+          description: categoryData.description,
+          color: categoryData.color,
+          icon: categoryData.icon,
+          is_active: categoryData.isActive
+        })
+        .eq('id', categoryId)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('❌ Error actualizando categoría:', error);
+        throw error;
+      }
+
+      console.log('✅ Categoría actualizada:', data);
+      return data;
+    } catch (error) {
+      console.error('❌ Error en updateCategory:', error);
+      throw error;
+    }
+  }
+
+  // Eliminar categoría
+  async deleteCategory(categoryId) {
+    try {
+      console.log('🔍 Eliminando categoría:', categoryId);
+      
+      const { error } = await supabase
+        .from('categories')
+        .delete()
+        .eq('id', categoryId);
+
+      if (error) {
+        console.error('❌ Error eliminando categoría:', error);
+        throw error;
+      }
+
+      console.log('✅ Categoría eliminada');
+      return true;
+    } catch (error) {
+      console.error('❌ Error en deleteCategory:', error);
+      throw error;
+    }
+  }
+
+  // Obtener categorías asignadas a un estudiante específico
   async getAssignedCategories(studentId) {
     try {
       console.log('🔍 Buscando categorías asignadas para estudiante:', studentId);
@@ -68,106 +177,98 @@ class CategoriesService {
     }
   }
 
-  // Nuevo: Obtener progreso del estudiante en categorías asignadas
-  async getStudentProgress(studentId) {
+  // Asignar estudiante a categoría
+  async assignStudentToCategory(studentId, categoryId) {
     try {
-      console.log('🔍 Obteniendo progreso del estudiante:', studentId);
+      console.log('🔍 Asignando estudiante a categoría:', { studentId, categoryId });
       
       const { data, error } = await supabase
-        .rpc('get_student_progress', {
-          student_id: studentId
-        });
+        .from('student_categories')
+        .insert({
+          student_id: studentId,
+          category_id: categoryId,
+          published: false // Por defecto no publicado
+        })
+        .select()
+        .single();
 
       if (error) {
-        console.error('❌ Error obteniendo progreso:', error);
+        console.error('❌ Error asignando estudiante a categoría:', error);
         throw error;
       }
 
-      console.log('✅ Progreso obtenido:', data?.length || 0, data);
-      return data || [];
+      console.log('✅ Estudiante asignado a categoría:', data);
+      return data;
     } catch (error) {
-      console.error('❌ Error obteniendo progreso del estudiante:', error);
-      return [];
+      console.error('❌ Error en assignStudentToCategory:', error);
+      throw error;
     }
   }
 
-  async getAllCategories() {
+  // Desasignar estudiante de categoría
+  async unassignStudentFromCategory(studentId, categoryId) {
     try {
-      const { data, error } = await supabase
-        .from('categories')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      return data || [];
-    } catch (error) {
-      console.error('❌ Error obteniendo todas las categorías:', error);
-      return [];
-    }
-  }
-
-  async createCategory({ name, description }) {
-    try {
-      const { data, error } = await supabase
-        .from('categories')
-        .insert({ name, description, is_active: true })
-        .select('*')
-        .single();
-      if (error) throw error;
-      return { success: true, data };
-    } catch (error) {
-      console.error('❌ Error creando categoría:', error);
-      return { success: false, error: error.message };
-    }
-  }
-
-  async updateCategory(id, { name, description }) {
-    try {
-      const { data, error } = await supabase
-        .from('categories')
-        .update({ name, description })
-        .eq('id', id)
-        .select('*')
-        .single();
-      if (error) throw error;
-      return { success: true, data };
-    } catch (error) {
-      console.error('❌ Error actualizando categoría:', error);
-      return { success: false, error: error.message };
-    }
-  }
-
-  async toggleActive(id, isActive) {
-    try {
-      const { data, error } = await supabase
-        .from('categories')
-        .update({ is_active: isActive })
-        .eq('id', id)
-        .select('*')
-        .single();
-      if (error) throw error;
-      return { success: true, data };
-    } catch (error) {
-      console.error('❌ Error cambiando estado de categoría:', error);
-      return { success: false, error: error.message };
-    }
-  }
-
-  async deleteCategory(id) {
-    try {
+      console.log('🔍 Desasignando estudiante de categoría:', { studentId, categoryId });
+      
       const { error } = await supabase
-        .from('categories')
+        .from('student_categories')
         .delete()
-        .eq('id', id);
-      if (error) throw error;
-      return { success: true };
+        .eq('student_id', studentId)
+        .eq('category_id', categoryId);
+
+      if (error) {
+        console.error('❌ Error desasignando estudiante de categoría:', error);
+        throw error;
+      }
+
+      console.log('✅ Estudiante desasignado de categoría');
+      return true;
     } catch (error) {
-      console.error('❌ Error eliminando categoría:', error);
-      return { success: false, error: error.message };
+      console.error('❌ Error en unassignStudentFromCategory:', error);
+      throw error;
     }
+  }
+
+  // Obtener estudiantes asignados a una categoría
+  async getStudentsByCategory(categoryId) {
+    try {
+      console.log('🔍 Obteniendo estudiantes por categoría:', categoryId);
+      
+      const { data, error } = await supabase
+        .from('student_categories')
+        .select(`
+          student_id,
+          published,
+          app_users_enriched (
+            id,
+            email,
+            full_name
+          )
+        `)
+        .eq('category_id', categoryId);
+
+      if (error) {
+        console.error('❌ Error obteniendo estudiantes por categoría:', error);
+        throw error;
+      }
+
+      console.log('✅ Estudiantes por categoría obtenidos:', data?.length || 0);
+      return data || [];
+    } catch (error) {
+      console.error('❌ Error en getStudentsByCategory:', error);
+      throw error;
+    }
+  }
+
+  // Función auxiliar para obtener color por defecto
+  getDefaultColor() {
+    return '#6366f1';
+  }
+
+  // Función auxiliar para obtener icono por defecto
+  getDefaultIcon() {
+    return '📚';
   }
 }
 
 export default new CategoriesService();
-
-
