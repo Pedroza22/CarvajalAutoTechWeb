@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { getColor } from '../../utils/constants';
 import StatisticsService from '../../services/StatisticsService';
+import StudentsService from '../../services/StudentsService';
 
 const AdminStatisticsPage = ({ onNavigate }) => {
   const [loading, setLoading] = useState(true);
@@ -20,14 +21,22 @@ const AdminStatisticsPage = ({ onNavigate }) => {
       const stats = await StatisticsService.getAdminStats();
       setOverallStats(stats);
 
-      // Cargar top estudiantes (simulado por ahora)
-      setTopStudents([
-        { name: 'Juan Pérez', email: 'juan@email.com', accuracy: 95, questionsAnswered: 45, rank: 1 },
-        { name: 'María García', email: 'maria@email.com', accuracy: 92, questionsAnswered: 38, rank: 2 },
-        { name: 'Carlos López', email: 'carlos@email.com', accuracy: 89, questionsAnswered: 42, rank: 3 },
-        { name: 'Ana Martínez', email: 'ana@email.com', accuracy: 87, questionsAnswered: 35, rank: 4 },
-        { name: 'Luis Rodríguez', email: 'luis@email.com', accuracy: 85, questionsAnswered: 40, rank: 5 },
-      ]);
+      // Cargar top estudiantes desde Supabase
+      console.log('🔄 Cargando top estudiantes desde Supabase...');
+      const studentsData = await StudentsService.getStudentsWithStats();
+      const topStudentsData = studentsData
+        .filter(s => s.totalAnswers > 0)
+        .sort((a, b) => b.accuracy - a.accuracy)
+        .slice(0, 5)
+        .map((student, index) => ({
+          name: student.name,
+          email: student.email,
+          accuracy: student.accuracy,
+          questionsAnswered: student.totalAnswers,
+          rank: index + 1
+        }));
+      setTopStudents(topStudentsData);
+      console.log('✅ Top estudiantes cargados:', topStudentsData.length);
 
       // Cargar tendencias (simulado por ahora)
       setTrends([

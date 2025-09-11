@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getColor } from '../../utils/constants';
-import StatisticsService from '../../services/StatisticsService';
+import StudentsService from '../../services/StudentsService';
 
 const AdminStudentsPage = ({ onNavigate }) => {
   const [loading, setLoading] = useState(true);
@@ -20,22 +20,14 @@ const AdminStudentsPage = ({ onNavigate }) => {
     try {
       setLoading(true);
       
-      // Simular carga de estudiantes (por ahora)
-      // En el futuro esto vendrá de un servicio real
-      const mockStudents = [
-        { id: '1', name: 'Juan Pérez', email: 'juan.perez@email.com', totalAnswers: 45, accuracy: 95 },
-        { id: '2', name: 'María García', email: 'maria.garcia@email.com', totalAnswers: 38, accuracy: 92 },
-        { id: '3', name: 'Carlos López', email: 'carlos.lopez@email.com', totalAnswers: 42, accuracy: 89 },
-        { id: '4', name: 'Ana Martínez', email: 'ana.martinez@email.com', totalAnswers: 35, accuracy: 87 },
-        { id: '5', name: 'Luis Rodríguez', email: 'luis.rodriguez@email.com', totalAnswers: 40, accuracy: 85 },
-        { id: '6', name: 'Sofia González', email: 'sofia.gonzalez@email.com', totalAnswers: 28, accuracy: 82 },
-        { id: '7', name: 'Diego Herrera', email: 'diego.herrera@email.com', totalAnswers: 33, accuracy: 80 },
-        { id: '8', name: 'Valentina Silva', email: 'valentina.silva@email.com', totalAnswers: 31, accuracy: 78 },
-      ];
-      
-      setStudents(mockStudents);
+      console.log('🔄 Cargando estudiantes desde Supabase...');
+      const studentsData = await StudentsService.getStudentsWithStats();
+      setStudents(studentsData);
+      console.log('✅ Estudiantes cargados:', studentsData.length);
     } catch (error) {
-      console.error('Error cargando estudiantes:', error);
+      console.error('❌ Error cargando estudiantes:', error);
+      // En caso de error, mostrar lista vacía
+      setStudents([]);
     } finally {
       setLoading(false);
     }
@@ -84,7 +76,9 @@ const AdminStudentsPage = ({ onNavigate }) => {
       background: safeColor('dark'),
       color: safeColor('textPrimary'),
       padding: '20px',
-      fontFamily: 'Arial, sans-serif'
+      fontFamily: 'Arial, sans-serif',
+      maxWidth: '1200px',
+      margin: '0 auto'
     }}>
       {/* Header */}
       <div style={{
@@ -184,7 +178,8 @@ const AdminStudentsPage = ({ onNavigate }) => {
                   padding: '16px 20px',
                   borderBottom: index < filteredStudents.length - 1 ? `1px solid ${safeColor('border')}33` : 'none',
                   cursor: 'pointer',
-                  transition: 'background-color 0.2s ease'
+                  transition: 'background-color 0.2s ease',
+                  minHeight: '80px'
                 }}
                 onMouseOver={(e) => {
                   e.target.style.backgroundColor = safeColor('border') + '20';
@@ -231,10 +226,11 @@ const AdminStudentsPage = ({ onNavigate }) => {
                 {/* Estadísticas */}
                 <div style={{
                   display: 'flex',
-                  gap: '16px',
-                  alignItems: 'center'
+                  gap: '20px',
+                  alignItems: 'center',
+                  minWidth: '200px'
                 }}>
-                  <div style={{ textAlign: 'center' }}>
+                  <div style={{ textAlign: 'center', minWidth: '60px' }}>
                     <div style={{
                       fontSize: '1rem',
                       fontWeight: '600',
@@ -243,14 +239,15 @@ const AdminStudentsPage = ({ onNavigate }) => {
                       {student.totalAnswers}
                     </div>
                     <div style={{
-                      fontSize: '0.8rem',
-                      color: safeColor('textMuted')
+                      fontSize: '0.75rem',
+                      color: safeColor('textMuted'),
+                      whiteSpace: 'nowrap'
                     }}>
                       Respuestas
                     </div>
                   </div>
                   
-                  <div style={{ textAlign: 'center' }}>
+                  <div style={{ textAlign: 'center', minWidth: '60px' }}>
                     <div style={{
                       fontSize: '1rem',
                       fontWeight: '600',
@@ -259,8 +256,9 @@ const AdminStudentsPage = ({ onNavigate }) => {
                       {student.accuracy}%
                     </div>
                     <div style={{
-                      fontSize: '0.8rem',
-                      color: safeColor('textMuted')
+                      fontSize: '0.75rem',
+                      color: safeColor('textMuted'),
+                      whiteSpace: 'nowrap'
                     }}>
                       Precisión
                     </div>

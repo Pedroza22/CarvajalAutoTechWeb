@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getColor } from '../../utils/constants';
-import StatisticsService from '../../services/StatisticsService';
+import StudentsService from '../../services/StudentsService';
 
 const AdminStudentDetailPage = ({ student, onBack }) => {
   const [loading, setLoading] = useState(true);
@@ -18,53 +18,24 @@ const AdminStudentDetailPage = ({ student, onBack }) => {
     try {
       setLoading(true);
       
-      // Simular carga de datos del estudiante
-      // En el futuro esto vendrá de servicios reales
-      const mockStudentData = {
+      console.log('🔄 Cargando detalle del estudiante desde Supabase...');
+      const studentDetail = await StudentsService.getStudentDetail(student.id);
+      
+      setStudentData(studentDetail);
+      setCategoryStats(studentDetail.categoryStats || []);
+      console.log('✅ Detalle del estudiante cargado:', studentDetail);
+    } catch (error) {
+      console.error('❌ Error cargando detalle del estudiante:', error);
+      // En caso de error, usar datos básicos
+      setStudentData({
         ...student,
         totalAnswers: student.totalAnswers || 0,
         overallAccuracy: student.accuracy || 0,
-        lastActivity: 'Hace 2 horas',
-        joinedDate: '15 de enero, 2024'
-      };
-
-      const mockCategoryStats = [
-        {
-          categoryId: '1',
-          categoryName: 'Matemáticas',
-          totalQuestions: 15,
-          answered: 12,
-          correct: 11,
-          accuracy: 92,
-          published: true,
-          lastAnswered: 'Hace 1 hora'
-        },
-        {
-          categoryId: '2',
-          categoryName: 'Ciencias',
-          totalQuestions: 10,
-          answered: 8,
-          correct: 7,
-          accuracy: 88,
-          published: false,
-          lastAnswered: 'Hace 3 horas'
-        },
-        {
-          categoryId: '3',
-          categoryName: 'Historia',
-          totalQuestions: 12,
-          answered: 5,
-          correct: 4,
-          accuracy: 80,
-          published: true,
-          lastAnswered: 'Ayer'
-        }
-      ];
-
-      setStudentData(mockStudentData);
-      setCategoryStats(mockCategoryStats);
-    } catch (error) {
-      console.error('Error cargando detalle del estudiante:', error);
+        lastActivity: 'Sin datos',
+        joinedDate: 'Fecha no disponible',
+        categoryStats: []
+      });
+      setCategoryStats([]);
     } finally {
       setLoading(false);
     }
@@ -72,17 +43,23 @@ const AdminStudentDetailPage = ({ student, onBack }) => {
 
   const toggleCategoryPublication = async (categoryId, currentState) => {
     try {
-      // Simular cambio de estado de publicación
+      console.log(`🔄 Cambiando publicación de categoría ${categoryId} a ${!currentState}`);
+      
+      // Llamar al servicio real
+      await StudentsService.toggleCategoryPublication(student.id, categoryId, !currentState);
+      
+      // Actualizar estado local
       setCategoryStats(prev => prev.map(cat => 
         cat.categoryId === categoryId 
           ? { ...cat, published: !currentState }
           : cat
       ));
       
-      // Aquí se haría la llamada real al servicio
-      console.log(`Cambiando publicación de categoría ${categoryId} a ${!currentState}`);
+      console.log('✅ Publicación cambiada exitosamente');
     } catch (error) {
-      console.error('Error cambiando estado de publicación:', error);
+      console.error('❌ Error cambiando estado de publicación:', error);
+      // Mostrar mensaje de error al usuario
+      alert('Error al cambiar el estado de publicación. Por favor, inténtalo de nuevo.');
     }
   };
 
