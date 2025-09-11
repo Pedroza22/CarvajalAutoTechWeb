@@ -94,11 +94,14 @@ function App() {
       try {
         console.log('🔄 Cargando datos del estudiante...');
         setIsLoadingCategories(true);
+        
+        // Usar las nuevas funcionalidades: categorías asignadas y estadísticas publicadas
         const [cats, stats] = await Promise.all([
-          CategoriesService.getActiveCategories(),
-          StatisticsService.getDashboardStats(user.id)
+          CategoriesService.getAssignedCategories(user.id),
+          StatisticsService.getPublishedCategoryStats(user.id)
         ]);
-        console.log('📊 Datos cargados - categorías:', cats?.length, 'stats:', stats);
+        
+        console.log('📊 Datos cargados - categorías asignadas:', cats?.length, 'stats publicadas:', stats);
         setCategories(Array.isArray(cats) ? cats : []);
         setStudentStats(stats || {});
       } catch (e) {

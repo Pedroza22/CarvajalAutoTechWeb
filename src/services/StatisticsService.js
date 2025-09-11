@@ -353,6 +353,273 @@ class StatisticsService {
       return null;
     }
   }
+
+  // Nuevo: Obtener estadísticas solo de categorías publicadas
+  async getPublishedCategoryStats(studentId) {
+    try {
+      console.log('🔍 Obteniendo estadísticas de categorías publicadas para:', studentId);
+      
+      const { data, error } = await supabase
+        .from('student_category_publication_status')
+        .select('total_answers, correct_answers, published')
+        .eq('student_id', studentId)
+        .eq('published', true);
+
+      if (error) {
+        console.error('❌ Error obteniendo estadísticas publicadas:', error);
+        throw error;
+      }
+
+      let totalAnswered = 0;
+      let correctAnswers = 0;
+
+      for (const category of data || []) {
+        totalAnswered += (category.total_answers || 0);
+        correctAnswers += (category.correct_answers || 0);
+      }
+
+      const incorrectAnswers = totalAnswered - correctAnswers;
+      const accuracyPercentage = totalAnswered > 0 ? (correctAnswers / totalAnswered) * 100.0 : 0.0;
+
+      const stats = {
+        totalAnswered,
+        correctAnswers,
+        incorrectAnswers,
+        accuracyPercentage: parseFloat(accuracyPercentage.toFixed(1)),
+        streak: 0 // TODO: Implementar lógica de racha
+      };
+
+      console.log('✅ Estadísticas publicadas calculadas:', stats);
+      return stats;
+    } catch (error) {
+      console.error('❌ Error obteniendo estadísticas publicadas:', error);
+      return {
+        totalAnswered: 0,
+        correctAnswers: 0,
+        incorrectAnswers: 0,
+        accuracyPercentage: 0.0,
+        streak: 0
+      };
+    }
+  }
+
+  // Nuevo: Obtener estado de publicación de categorías
+  async getCategoryPublicationStatus(studentId) {
+    try {
+      console.log('🔍 Obteniendo estado de publicación para:', studentId);
+      
+      const { data, error } = await supabase
+        .from('student_categories')
+        .select('category_id, published')
+        .eq('student_id', studentId);
+
+      if (error) {
+        console.error('❌ Error obteniendo estado de publicación:', error);
+        throw error;
+      }
+
+      const statusMap = {};
+      for (const item of data || []) {
+        statusMap[item.category_id] = item.published || false;
+      }
+
+      console.log('✅ Estado de publicación obtenido:', statusMap);
+      return statusMap;
+    } catch (error) {
+      console.error('❌ Error obteniendo estado de publicación:', error);
+      return {};
+    }
+  }
+
+  // Nuevo: Obtener estadísticas individuales por categoría
+  async getCategoryStatsDetailed(studentId) {
+    try {
+      console.log('🔍 Obteniendo estadísticas por categoría para:', studentId);
+      
+      const { data, error } = await supabase
+        .from('student_category_publication_status')
+        .select('category_id, total_answers, correct_answers, success_percentage, published')
+        .eq('student_id', studentId);
+
+      if (error) {
+        console.error('❌ Error obteniendo estadísticas por categoría:', error);
+        throw error;
+      }
+
+      // Obtener conteo de preguntas por categoría
+      const categoryIds = data?.map(item => item.category_id) || [];
+      let questionCounts = {};
+
+      if (categoryIds.length > 0) {
+        const { data: questionData, error: questionError } = await supabase
+          .from('questions')
+          .select('category_id')
+          .in('category_id', categoryIds);
+
+        if (!questionError) {
+          for (const question of questionData || []) {
+            const categoryId = question.category_id;
+            questionCounts[categoryId] = (questionCounts[categoryId] || 0) + 1;
+          }
+        }
+      }
+
+      const statsMap = {};
+      for (const item of data || []) {
+        const categoryId = item.category_id;
+        const isPublished = item.published || false;
+        const questionCount = questionCounts[categoryId] || 0;
+
+        if (isPublished) {
+          statsMap[categoryId] = {
+            totalAnswers: item.total_answers || 0,
+            correctAnswers: item.correct_answers || 0,
+            successPercentage: item.success_percentage || 0.0,
+            questionCount
+          };
+        } else {
+          statsMap[categoryId] = {
+            totalAnswers: 0,
+            correctAnswers: 0,
+            successPercentage: 0.0,
+            questionCount
+          };
+        }
+      }
+
+      console.log('✅ Estadísticas por categoría obtenidas:', statsMap);
+      return statsMap;
+    } catch (error) {
+      console.error('❌ Error obteniendo estadísticas por categoría:', error);
+      return {};
+    }
+  }
+
+  // Nuevo: Obtener actividad reciente del estudiante
+  async getRecentActivity(studentId, limit = 5) {
+    try {
+      console.log('🔍 Obteniendo actividad reciente para:', studentId);
+      
+      const { data, error } = await supabase
+        .from('student_answers')
+        .select(`
+          answered_at,
+          is_correct,
+          time_spent,
+          questions (
+            question,
+            type,
+            categories (
+              name,
+              id
+            )
+          )
+        `)
+        .eq('student_id', studentId)
+        .order('answered_at', { ascending: false })
+        .limit(limit);
+
+      if (error) {
+        console.error('❌ Error obteniendo actividad reciente:', error);
+        throw error;
+      }
+
+      // Agrupar por categoría y calcular estadísticas
+      const categoryActivity = {};
+      
+      for (const answer of data || []) {
+        const categoryId = answer.questions?.categories?.id;
+        const categoryName = answer.questions?.categories?.name || 'Sin categoría';
+        
+        if (!categoryActivity[categoryId]) {
+          categoryActivity[categoryId] = {
+            categoryId,
+            categoryName,
+            totalAnswers: 0,
+            correctAnswers: 0,
+            lastAnswered: null,
+            answers: []
+          };
+        }
+        
+        categoryActivity[categoryId].totalAnswers++;
+        if (answer.is_correct) {
+          categoryActivity[categoryId].correctAnswers++;
+        }
+        
+        if (!categoryActivity[categoryId].lastAnswered || 
+            new Date(answer.answered_at) > new Date(categoryActivity[categoryId].lastAnswered)) {
+          categoryActivity[categoryId].lastAnswered = answer.answered_at;
+        }
+        
+        categoryActivity[categoryId].answers.push(answer);
+      }
+
+      // Convertir a array y ordenar por fecha más reciente
+      const recentActivity = Object.values(categoryActivity)
+        .map(category => {
+          const accuracy = category.totalAnswers > 0 ? 
+            Math.round((category.correctAnswers / category.totalAnswers) * 100) : 0;
+          
+          const timeAgo = this.getTimeAgo(category.lastAnswered);
+          
+          return {
+            categoryId: category.categoryId,
+            categoryName: category.categoryName,
+            totalAnswers: category.totalAnswers,
+            correctAnswers: category.correctAnswers,
+            accuracy,
+            lastAnswered: category.lastAnswered,
+            timeAgo,
+            icon: this.getCategoryIcon(category.categoryName),
+            color: this.getAccuracyColor(accuracy)
+          };
+        })
+        .sort((a, b) => new Date(b.lastAnswered) - new Date(a.lastAnswered))
+        .slice(0, limit);
+
+      console.log('✅ Actividad reciente obtenida:', recentActivity);
+      return recentActivity;
+    } catch (error) {
+      console.error('❌ Error obteniendo actividad reciente:', error);
+      return [];
+    }
+  }
+
+  // Función auxiliar para calcular tiempo transcurrido
+  getTimeAgo(dateString) {
+    if (!dateString) return 'Hace mucho tiempo';
+    
+    const now = new Date();
+    const date = new Date(dateString);
+    const diffInMs = now - date;
+    const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60));
+    const diffInDays = Math.floor(diffInHours / 24);
+    
+    if (diffInHours < 1) return 'Hace menos de 1 hora';
+    if (diffInHours < 24) return `Hace ${diffInHours} hora${diffInHours > 1 ? 's' : ''}`;
+    if (diffInDays < 7) return `Hace ${diffInDays} día${diffInDays > 1 ? 's' : ''}`;
+    return `Hace ${Math.floor(diffInDays / 7)} semana${Math.floor(diffInDays / 7) > 1 ? 's' : ''}`;
+  }
+
+  // Función auxiliar para obtener icono según categoría
+  getCategoryIcon(categoryName) {
+    const name = categoryName.toLowerCase();
+    if (name.includes('matemática') || name.includes('math')) return '📊';
+    if (name.includes('ciencia') || name.includes('science')) return '🔬';
+    if (name.includes('historia') || name.includes('history')) return '📚';
+    if (name.includes('lengua') || name.includes('language')) return '📝';
+    if (name.includes('geografía') || name.includes('geography')) return '🌍';
+    return '📖';
+  }
+
+  // Función auxiliar para obtener color según precisión
+  getAccuracyColor(accuracy) {
+    if (accuracy >= 90) return '#10b981'; // success
+    if (accuracy >= 80) return '#3b82f6'; // primary
+    if (accuracy >= 70) return '#f59e0b'; // warning
+    return '#ef4444'; // error
+  }
 }
 
 export default new StatisticsService();

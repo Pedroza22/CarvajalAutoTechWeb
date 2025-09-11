@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { AppConstants } from '../utils/constants';
 import CustomButton from './CustomButton';
 import StudentStatsCard from './StudentStatsCard';
 import CategoryQuizCard from './CategoryQuizCard';
+import StatisticsService from '../services/StatisticsService';
 
 // Fallback colors en caso de que AppConstants no esté disponible
 const fallbackColors = {
@@ -30,7 +31,58 @@ const StudentDashboard = ({
   onStartQuiz 
 }) => {
   const categoriesList = Array.isArray(categories) ? categories : [];
+  
+  // Estados para las nuevas funcionalidades
+  const [categoryPublicationStatus, setCategoryPublicationStatus] = useState({});
+  const [categoryStats, setCategoryStats] = useState({});
+  const [loadingStats, setLoadingStats] = useState(true);
+  const [recentActivity, setRecentActivity] = useState([]);
+  const [loadingActivity, setLoadingActivity] = useState(true);
   const categoriesCount = categoriesList.length;
+
+  // Cargar estado de publicación y estadísticas por categoría
+  useEffect(() => {
+    const loadCategoryData = async () => {
+      if (!user?.id) return;
+      
+      try {
+        setLoadingStats(true);
+        const [publicationStatus, stats] = await Promise.all([
+          StatisticsService.getCategoryPublicationStatus(user.id),
+          StatisticsService.getCategoryStatsDetailed(user.id)
+        ]);
+        
+        setCategoryPublicationStatus(publicationStatus);
+        setCategoryStats(stats);
+      } catch (error) {
+        console.error('❌ Error cargando datos de categorías:', error);
+      } finally {
+        setLoadingStats(false);
+      }
+    };
+
+    loadCategoryData();
+  }, [user?.id, categoriesList]);
+
+  // Cargar actividad reciente del estudiante
+  useEffect(() => {
+    const loadRecentActivity = async () => {
+      if (!user?.id) return;
+      
+      try {
+        setLoadingActivity(true);
+        const activity = await StatisticsService.getRecentActivity(user.id);
+        setRecentActivity(activity || []);
+      } catch (error) {
+        console.error('❌ Error cargando actividad reciente:', error);
+        setRecentActivity([]);
+      } finally {
+        setLoadingActivity(false);
+      }
+    };
+
+    loadRecentActivity();
+  }, [user?.id]);
 
   return (
     <div style={{
@@ -215,13 +267,28 @@ const StudentDashboard = ({
               gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
               gap: '24px'
             }}>
-              {categoriesList.map((category) => (
-                <CategoryQuizCard
-                  key={category.id}
-                  category={category}
-                  onStartQuiz={() => onStartQuiz(category.id)}
-                />
-              ))}
+              {categoriesList.map((category) => {
+                const isPublished = categoryPublicationStatus[category.id] || false;
+                const stats = categoryStats[category.id] || {
+                  totalAnswers: 0,
+                  correctAnswers: 0,
+                  successPercentage: 0.0,
+                  questionCount: 0
+                };
+
+                return (
+                  <CategoryQuizCard
+                    key={category.id}
+                    category={{
+                      ...category,
+                      questionCount: stats.questionCount,
+                      completed: stats.totalAnswers,
+                      lastScore: isPublished && stats.totalAnswers > 0 ? stats.successPercentage : null
+                    }}
+                    onStartQuiz={() => onStartQuiz(category.id)}
+                  />
+                );
+              })}
             </div>
           )}
         </div>
@@ -237,87 +304,105 @@ const StudentDashboard = ({
           <h3 style={{
             fontSize: '1.5rem',
             fontWeight: '700',
-            marginBottom: '16px'
+            marginBottom: '16px',
+            color: safeColor('textPrimary')
           }}>
             Progreso Reciente
           </h3>
-          <div style={{
-            background: safeColor('cardBg'),
-            borderRadius: '16px',
-            border: `1px solid ${safeColor('border')}4D`
-          }}>
-            {[
-              {
-                title: 'Quiz de Matemáticas',
-                subtitle: '8/10 correctas - 80%',
-                time: 'Hace 2 horas',
-                icon: '📊',
-                color: safeColor('success')
-              },
-              {
-                title: 'Quiz de Ciencias',
-                subtitle: '6/8 correctas - 75%',
-                time: 'Ayer',
-                icon: '🔬',
-                color: safeColor('primary')
-              },
-              {
-                title: 'Quiz de Historia',
-                subtitle: '7/9 correctas - 78%',
-                time: 'Hace 3 días',
-                icon: '📚',
-                color: safeColor('warning')
-              }
-            ].map((activity, index) => (
-              <div
-                key={index}
-                style={{
-                  padding: '16px',
-                  borderBottom: index < 2 ? `1px solid ${safeColor('border')}33` : 'none',
-                  display: 'flex',
-                  alignItems: 'center'
-                }}
-              >
-                <div style={{
-                  width: '40px',
-                  height: '40px',
-                  background: `${activity.color}20`,
-                  borderRadius: '10px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  marginRight: '16px',
-                  fontSize: '20px'
-                }}>
-                  {activity.icon}
-                </div>
-                <div style={{ flex: 1 }}>
-                  <h4 style={{
-                    fontSize: '1rem',
-                    fontWeight: '600',
-                    margin: '0 0 4px 0',
-                    color: safeColor('textPrimary')
-                  }}>
-                    {activity.title}
-                  </h4>
-                  <p style={{
-                    fontSize: '0.875rem',
-                    color: safeColor('textMuted'),
-                    margin: '0 0 4px 0'
-                  }}>
-                    {activity.subtitle}
-                  </p>
-                  <p style={{
-                    fontSize: '0.75rem',
-                    color: safeColor('textMuted'),
-                    margin: 0
-                  }}>
-                    {activity.time}
-                  </p>
-                </div>
+          
+          {loadingActivity ? (
+            <div style={{
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              padding: '40px'
+            }}>
+              <div style={{ fontSize: '18px', color: safeColor('textMuted') }}>
+                Cargando actividad reciente...
               </div>
-            ))}
-          </div>
+            </div>
+          ) : recentActivity.length === 0 ? (
+            <div style={{
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              padding: '40px'
+            }}>
+              <div style={{ fontSize: '18px', color: safeColor('textMuted') }}>
+                No hay actividad reciente
+              </div>
+            </div>
+          ) : (
+            <div style={{
+              background: safeColor('cardBg'),
+              borderRadius: '16px',
+              border: `1px solid ${safeColor('border')}4D`
+            }}>
+              {recentActivity.map((activity, index) => (
+                <div
+                  key={activity.categoryId}
+                  style={{
+                    padding: '16px',
+                    borderBottom: index < recentActivity.length - 1 ? `1px solid ${safeColor('border')}33` : 'none',
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}
+                >
+                  <div style={{
+                    width: '40px',
+                    height: '40px',
+                    background: `${activity.color}20`,
+                    borderRadius: '10px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginRight: '16px',
+                    fontSize: '20px'
+                  }}>
+                    {activity.icon}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <h4 style={{
+                      fontSize: '1rem',
+                      fontWeight: '600',
+                      margin: '0 0 4px 0',
+                      color: safeColor('textPrimary')
+                    }}>
+                      Quiz de {activity.categoryName}
+                    </h4>
+                    <p style={{
+                      fontSize: '0.875rem',
+                      color: safeColor('textMuted'),
+                      margin: '0 0 4px 0'
+                    }}>
+                      {activity.correctAnswers}/{activity.totalAnswers} correctas - {activity.accuracy}%
+                    </p>
+                    <p style={{
+                      fontSize: '0.75rem',
+                      color: safeColor('textMuted'),
+                      margin: 0
+                    }}>
+                      {activity.timeAgo}
+                    </p>
+                  </div>
+                  <div style={{
+                    padding: '4px 8px',
+                    background: `${activity.color}20`,
+                    borderRadius: '12px',
+                    border: `1px solid ${activity.color}40`
+                  }}>
+                    <span style={{
+                      fontSize: '0.75rem',
+                      fontWeight: '600',
+                      color: activity.color
+                    }}>
+                      {activity.accuracy}%
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

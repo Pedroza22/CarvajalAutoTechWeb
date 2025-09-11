@@ -23,6 +23,74 @@ class CategoriesService {
     }
   }
 
+  // Nuevo: Obtener categorías asignadas a un estudiante específico
+  async getAssignedCategories(studentId) {
+    try {
+      console.log('🔍 Buscando categorías asignadas para estudiante:', studentId);
+      
+      // Primero obtener las categorías asignadas al estudiante
+      const { data: assignedData, error: assignedError } = await supabase
+        .from('student_categories')
+        .select('category_id')
+        .eq('student_id', studentId);
+
+      if (assignedError) {
+        console.error('❌ Error obteniendo categorías asignadas:', assignedError);
+        throw assignedError;
+      }
+
+      if (!assignedData || assignedData.length === 0) {
+        console.log('⚠️ No hay categorías asignadas al estudiante');
+        return [];
+      }
+
+      // Extraer los IDs de las categorías asignadas
+      const assignedCategoryIds = assignedData.map(item => item.category_id);
+
+      // Obtener las categorías activas que coincidan con los IDs asignados
+      const { data: categoriesData, error: categoriesError } = await supabase
+        .from('categories')
+        .select('*')
+        .eq('is_active', true)
+        .in('id', assignedCategoryIds)
+        .order('created_at', { ascending: false });
+
+      if (categoriesError) {
+        console.error('❌ Error obteniendo categorías activas:', categoriesError);
+        throw categoriesError;
+      }
+
+      console.log('✅ Categorías asignadas encontradas:', categoriesData?.length || 0, categoriesData);
+      return categoriesData || [];
+    } catch (error) {
+      console.error('❌ Error obteniendo categorías asignadas:', error);
+      return [];
+    }
+  }
+
+  // Nuevo: Obtener progreso del estudiante en categorías asignadas
+  async getStudentProgress(studentId) {
+    try {
+      console.log('🔍 Obteniendo progreso del estudiante:', studentId);
+      
+      const { data, error } = await supabase
+        .rpc('get_student_progress', {
+          student_id: studentId
+        });
+
+      if (error) {
+        console.error('❌ Error obteniendo progreso:', error);
+        throw error;
+      }
+
+      console.log('✅ Progreso obtenido:', data?.length || 0, data);
+      return data || [];
+    } catch (error) {
+      console.error('❌ Error obteniendo progreso del estudiante:', error);
+      return [];
+    }
+  }
+
   async getAllCategories() {
     try {
       const { data, error } = await supabase
