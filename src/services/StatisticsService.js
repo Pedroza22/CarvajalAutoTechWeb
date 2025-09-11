@@ -1,4 +1,4 @@
-import { supabase } from '../config/supabase';
+import SupabaseConfig from '../config/SupabaseConfig.client';
 
 class StatisticsService {
   /**
@@ -78,7 +78,7 @@ class StatisticsService {
    */
   async getOverallStats() {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await SupabaseConfig.client
         .from('stats_overall')
         .select('*')
         .single();
@@ -96,7 +96,7 @@ class StatisticsService {
    */
   async getTotalStudents() {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await SupabaseConfig.client
         .from('app_users')
         .select('id');
 
@@ -113,7 +113,7 @@ class StatisticsService {
    */
   async getCategoryStatsFromView() {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await SupabaseConfig.client
         .from('stats_by_category')
         .select('*');
 
@@ -136,7 +136,7 @@ class StatisticsService {
    */
   async getTopStudentsFromView() {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await SupabaseConfig.client
         .from('stats_top_students')
         .select('*')
         .limit(5);
@@ -161,7 +161,7 @@ class StatisticsService {
    */
   async getTrendsFromView() {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await SupabaseConfig.client
         .from('stats_trends')
         .select('*')
         .order('day', { ascending: true });
@@ -251,7 +251,7 @@ class StatisticsService {
    */
   async getTotalQuestions() {
     try {
-      const { count, error } = await supabase
+      const { count, error } = await SupabaseConfig.client
         .from('questions')
         .select('*', { count: 'exact', head: true });
 
@@ -268,7 +268,7 @@ class StatisticsService {
    */
   async getTotalCategories() {
     try {
-      const { count, error } = await supabase
+      const { count, error } = await SupabaseConfig.client
         .from('categories')
         .select('*', { count: 'exact', head: true });
 
@@ -285,7 +285,7 @@ class StatisticsService {
    */
   async getTotalQuizzes() {
     try {
-      const { count, error } = await supabase
+      const { count, error } = await SupabaseConfig.client
         .from('student_answers')
         .select('quiz_id', { count: 'exact', head: true });
 
@@ -302,7 +302,7 @@ class StatisticsService {
    */
   async getAverageScore() {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await SupabaseConfig.client
         .from('student_answers')
         .select('is_correct');
 
@@ -326,14 +326,14 @@ class StatisticsService {
   async getCompletionRate() {
     try {
       // Obtener total de estudiantes
-      const { count: totalStudents, error: studentsError } = await supabase
+      const { count: totalStudents, error: studentsError } = await SupabaseConfig.client
         .from('app_users')
         .select('*', { count: 'exact', head: true });
 
       if (studentsError) throw studentsError;
 
       // Obtener estudiantes que han completado al menos un quiz
-      const { count: activeStudents, error: activeError } = await supabase
+      const { count: activeStudents, error: activeError } = await SupabaseConfig.client
         .from('student_answers')
         .select('student_id', { count: 'exact', head: true });
 
@@ -353,7 +353,7 @@ class StatisticsService {
    */
   async getRecentActivity(startDate, endDate) {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await SupabaseConfig.client
         .from('student_answers')
         .select(`
           created_at,
@@ -394,7 +394,7 @@ class StatisticsService {
    */
   async getCategoryStats() {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await SupabaseConfig.client
         .from('categories')
         .select(`
           id,
@@ -440,7 +440,7 @@ class StatisticsService {
    */
   async getDifficultyStats() {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await SupabaseConfig.client
         .from('questions')
         .select('difficulty');
 
@@ -484,7 +484,7 @@ class StatisticsService {
    */
   async getMonthlyStats(startDate, endDate) {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await SupabaseConfig.client
         .from('student_answers')
         .select('created_at, is_correct')
         .gte('created_at', startDate.toISOString())
@@ -554,7 +554,7 @@ class StatisticsService {
    */
   async getStudentStatistics(studentId) {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await SupabaseConfig.client
         .from('student_answers')
         .select(`
           id,
