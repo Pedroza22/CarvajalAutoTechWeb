@@ -1,6 +1,6 @@
 // Constantes de la aplicación (como AppConstants en Flutter)
 const constants = {
-  minPasswordLength: 4,
+  minPasswordLength: 6,
   appName: 'Carvajal AutoTech',
   version: '1.0.0',
   emailRegex: /^[\w-.]+@([\w-]+.)+[\w-]{2,4}$/,
@@ -30,7 +30,7 @@ const constants = {
     emailRequired: 'Ingresa tu correo electrónico',
     emailInvalid: 'Ingresa un correo válido',
     passwordRequired: 'Ingresa una contraseña',
-    passwordTooShort: `La contraseña debe tener al menos ${4} caracteres`,
+    passwordTooShort: `La contraseña debe tener al menos ${6} caracteres`,
     nameRequired: 'Ingresa tu nombre',
     nameTooShort: 'Nombre muy corto',
     lastNameRequired: 'Ingresa tu apellido',
