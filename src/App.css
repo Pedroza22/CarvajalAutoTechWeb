@@ -1,0 +1,370 @@
+/* Estilos responsivos para Carvajal AutoTech */
+
+/* Variables CSS para breakpoints */
+:root {
+  --mobile: 480px;
+  --tablet: 768px;
+  --desktop: 1024px;
+  --large: 1200px;
+}
+
+/* Reset y estilos base */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.App {
+  min-height: 100vh;
+  width: 100%;
+}
+
+/* Contenedores responsivos */
+.responsive-container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+.responsive-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: 1fr;
+}
+
+/* Botones responsivos */
+.responsive-button {
+  width: 100%;
+  min-height: 48px;
+  padding: 12px 24px;
+  font-size: 16px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+/* Campos de entrada responsivos */
+.responsive-input {
+  width: 100%;
+  min-height: 48px;
+  padding: 12px 16px;
+  font-size: 16px;
+  border-radius: 8px;
+  border: 2px solid #e2e8f0;
+  background: #ffffff;
+  transition: all 0.3s ease;
+}
+
+.responsive-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Cards responsivos */
+.responsive-card {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e2e8f0;
+}
+
+/* Layout responsivo para pantallas pequeñas */
+@media (max-width: 480px) {
+  .responsive-container {
+    padding: 0 12px;
+  }
+  
+  .responsive-card {
+    padding: 16px;
+    margin: 8px 0;
+  }
+  
+  .responsive-button {
+    min-height: 44px;
+    font-size: 14px;
+  }
+  
+  .responsive-input {
+    min-height: 44px;
+    font-size: 16px; /* Evitar zoom en iOS */
+  }
+  
+  /* Ajustes para logo en móvil */
+  .logo-mobile {
+    width: 60px !important;
+    height: 60px !important;
+  }
+  
+  .logo-text-mobile {
+    font-size: 18px !important;
+  }
+  
+  .logo-subtitle-mobile {
+    font-size: 12px !important;
+  }
+}
+
+/* Layout responsivo para tablets */
+@media (min-width: 481px) and (max-width: 768px) {
+  .responsive-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .responsive-container {
+    padding: 0 20px;
+  }
+  
+  .logo-tablet {
+    width: 80px !important;
+    height: 80px !important;
+  }
+  
+  .logo-text-tablet {
+    font-size: 24px !important;
+  }
+  
+  .logo-subtitle-tablet {
+    font-size: 14px !important;
+  }
+}
+
+/* Layout responsivo para desktop */
+@media (min-width: 769px) {
+  .responsive-grid {
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  }
+  
+  .responsive-container {
+    padding: 0 24px;
+  }
+  
+  .logo-desktop {
+    width: 100px !important;
+    height: 100px !important;
+  }
+  
+  .logo-text-desktop {
+    font-size: 28px !important;
+  }
+  
+  .logo-subtitle-desktop {
+    font-size: 16px !important;
+  }
+}
+
+/* Utilidades responsivas */
+.hide-mobile {
+  display: none;
+}
+
+.hide-desktop {
+  display: block;
+}
+
+@media (min-width: 769px) {
+  .hide-mobile {
+    display: block;
+  }
+  
+  .hide-desktop {
+    display: none;
+  }
+}
+
+/* Flexbox responsivo */
+.flex-responsive {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Animaciones para notificaciones */
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOut {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+@media (min-width: 481px) {
+  .flex-responsive {
+    flex-direction: row;
+    gap: 20px;
+  }
+}
+
+/* ===== Global layout & responsiveness ===== */
+* { box-sizing: border-box; }
+html, body, #root { height: 100%; }
+img, video { max-width: 100%; height: auto; }
+
+.page-container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+.card {
+  background: var(--card-bg, rgba(21,25,34,1));
+  border: 1px solid rgba(148,163,184,0.15);
+  border-radius: 16px;
+}
+
+/* Admin Categories list grid */
+.admin-cat-grid-header,
+.admin-cat-row {
+  display: grid;
+  grid-template-columns: 2fr 3fr 120px 220px;
+  gap: 12px;
+  padding: 12px;
+}
+
+@media (max-width: 900px) {
+  .admin-cat-grid-header,
+  .admin-cat-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.nowrap {
+  white-space: nowrap;
+}
+.wrap {
+  white-space: normal;
+  word-break: break-word;
+}
+
+.actions-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Texto responsivo */
+.text-responsive {
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+@media (min-width: 481px) {
+  .text-responsive {
+    font-size: 16px;
+  }
+}
+
+@media (min-width: 769px) {
+  .text-responsive {
+    font-size: 18px;
+  }
+}
+
+/* Espaciado responsivo */
+.spacing-responsive {
+  margin: 16px 0;
+  padding: 16px;
+}
+
+@media (min-width: 481px) {
+  .spacing-responsive {
+    margin: 20px 0;
+    padding: 20px;
+  }
+}
+
+@media (min-width: 769px) {
+  .spacing-responsive {
+    margin: 24px 0;
+    padding: 24px;
+  }
+}
+
+/* Animaciones suaves */
+.smooth-transition {
+  transition: all 0.3s ease;
+}
+
+/* Estados de hover responsivos */
+@media (hover: hover) {
+  .hover-effect:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  }
+}
+
+/* Modo oscuro responsivo */
+@media (prefers-color-scheme: dark) {
+  .responsive-card {
+    background: #1f2937;
+    border-color: #374151;
+    color: #f9fafb;
+  }
+  
+  .responsive-input {
+    background: #374151;
+    border-color: #4b5563;
+    color: #f9fafb;
+  }
+  
+  .responsive-input:focus {
+    border-color: #3b82f6;
+  }
+}
+
+/* Ajustes para pantallas muy pequeñas */
+@media (max-width: 320px) {
+  .responsive-container {
+    padding: 0 8px;
+  }
+  
+  .responsive-card {
+    padding: 12px;
+  }
+  
+  .responsive-button {
+    min-height: 40px;
+    font-size: 13px;
+  }
+}
+
+/* Animación de spinner para botones de carga */
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}

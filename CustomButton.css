@@ -1,0 +1,166 @@
+/* CustomButton.css */
+.custom-button {
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 600;
+  font-size: 16px;
+  letter-spacing: 0.5px;
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+  outline: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.custom-button.outlined {
+  border: 2px solid;
+  background: transparent !important;
+}
+
+.custom-button.filled {
+  border: none;
+}
+
+.custom-button.disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.custom-button:focus {
+  outline: none;
+}
+
+.button-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 100%;
+}
+
+.button-icon {
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.button-text {
+  font-weight: 600;
+  font-size: 16px;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.loading-spinner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+}
+
+.spinner {
+  width: 24px;
+  height: 24px;
+  border: 2px solid transparent;
+  border-radius: 50%;
+}
+
+.filled-spinner {
+  border-top-color: #ffffff;
+  border-right-color: #ffffff;
+}
+
+.outlined-spinner {
+  border-top-color: #ef4444;
+  border-right-color: #ef4444;
+}
+
+/* Hover effects for non-touch devices */
+@media (hover: hover) {
+  .custom-button:not(.disabled):hover {
+    transform: translateY(-1px);
+  }
+  
+  .custom-button.outlined:not(.disabled):hover {
+    background: rgba(239, 68, 68, 0.1) !important;
+  }
+}
+
+/* Active state */
+.custom-button:not(.disabled):active {
+  transform: scale(0.95);
+}
+
+/* Focus state for accessibility */
+.custom-button:focus-visible {
+  outline: 2px solid #ef4444;
+  outline-offset: 2px;
+}
+
+/* Gradient animations */
+.custom-button.filled:not(.disabled)::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.1),
+    transparent
+  );
+  transition: left 0.5s ease;
+  pointer-events: none;
+}
+
+.custom-button.filled:not(.disabled):hover::before {
+  left: 100%;
+}
+
+/* Icon animations */
+.button-icon {
+  transition: transform 0.2s ease;
+}
+
+.custom-button:hover .button-icon {
+  transform: scale(1.1);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .custom-button {
+    font-size: 14px;
+    height: 48px;
+  }
+  
+  .button-icon {
+    font-size: 18px;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .custom-button.outlined {
+    border-width: 3px;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .custom-button,
+  .button-icon,
+  .spinner {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+

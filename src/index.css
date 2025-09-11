@@ -1,0 +1,27 @@
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* Evitar saltos de scroll provocados por smooth behavior */
+html, body, #root {
+  scroll-behavior: auto !important;
+}
+
+/* Evitar que el foco mueva la pantalla en móviles (cuando es posible) */
+input, textarea, select, button {
+  -webkit-overflow-scrolling: auto;
+}

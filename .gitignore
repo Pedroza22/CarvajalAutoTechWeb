@@ -3,3 +3,9 @@ mobile/lib/
 movil/lib/
 public/lib/
 src/mobile/lib/
+node_modules/
+node_modules/
+dist/
+build/
+.env
+.env.local
