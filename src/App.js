@@ -10,6 +10,7 @@ import AdminHomePage from './components/admin/AdminHomePage';
 import AdminQuestionsListPage from './components/admin/AdminQuestionsListPage';
 import AdminStatisticsPage from './components/admin/AdminStatisticsPage';
 import AdminStudentsPage from './components/admin/AdminStudentsPage';
+import AdminStudentDetailPage from './components/admin/AdminStudentDetailPage';
 import AdminCreateQuestionPage from './components/admin/AdminCreateQuestionPage';
 import SupabaseConnectionTest from './components/SupabaseConnectionTest';
 import { getColor } from './utils/constants';
@@ -21,6 +22,7 @@ import { supabase } from './services/supabase';
 function App() {
   const { user, loading, signOut } = useAuth();
   const [currentPage, setCurrentPage] = useState('selection');
+  const [currentPageData, setCurrentPageData] = useState(null);
   const [categories, setCategories] = useState([]);
   const [isLoadingCategories, setIsLoadingCategories] = useState(false);
   const [studentStats, setStudentStats] = useState(null);
@@ -156,12 +158,24 @@ function App() {
         </div>
 
         {currentPage === 'admin-home' && (
-          <AdminHomePage onNavigate={setCurrentPage} />
+          <AdminHomePage onNavigate={(page, data) => {
+            setCurrentPage(page);
+            setCurrentPageData(data);
+          }} />
         )}
         {currentPage === 'admin-categories' && <AdminCategoriesPage onNavigate={setCurrentPage} />}
         {currentPage === 'admin-questions' && <AdminQuestionsListPage onNavigate={setCurrentPage} />}
-        {currentPage === 'admin-stats' && <AdminStatisticsPage />}
-        {currentPage === 'admin-students' && <AdminStudentsPage />}
+        {currentPage === 'admin-stats' && <AdminStatisticsPage onNavigate={setCurrentPage} />}
+        {currentPage === 'admin-students' && <AdminStudentsPage onNavigate={(page, data) => {
+          setCurrentPage(page);
+          setCurrentPageData(data);
+        }} />}
+        {currentPage === 'admin-student-detail' && (
+          <AdminStudentDetailPage 
+            student={currentPageData?.student} 
+            onBack={() => setCurrentPage('admin-students')} 
+          />
+        )}
         {currentPage === 'admin-create-question' && (
           <AdminCreateQuestionPage onSaved={() => setCurrentPage('admin-questions')} />
         )}
