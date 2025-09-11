@@ -3,6 +3,7 @@ import { useAuth } from './hooks/useAuth';
 import UnifiedAuthScreen from './components/UnifiedAuthScreen';
 import CustomButton from './components/CustomButton';
 import LoginScreenWrapper from './components/LoginScreenWrapper';
+import Logo from './components/Logo';
 import StudentDashboard from './components/StudentDashboard';
 import AdminCategoriesPage from './components/AdminCategoriesPage';
 import AdminHomePage from './components/admin/AdminHomePage';
@@ -257,7 +258,31 @@ function App() {
     switch (currentPage) {
       case 'selection':
         return (
-          <div style={{ textAlign: 'center', maxWidth: '400px', margin: '0 auto' }}>
+          <div style={{ 
+            textAlign: 'center', 
+            maxWidth: '400px', 
+            margin: '0 auto',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            minHeight: '100vh',
+            padding: '20px'
+          }}>
+            {/* Logo más grande y centrado */}
+            <div style={{ 
+              marginBottom: '40px',
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center'
+            }}>
+              <Logo 
+                size="xxlarge" 
+                showText={false} 
+                style={{ transform: 'scale(1.2)' }}
+              />
+            </div>
+            
             <h1 style={{ 
               color: getColor('textPrimary'), 
               marginBottom: '32px',
@@ -359,7 +384,7 @@ function App() {
 
   return (
     <div className="App">
-      <LoginScreenWrapper>
+      <LoginScreenWrapper hideLogoForSelection={currentPage === 'selection'}>
         {renderCurrentPage()}
       </LoginScreenWrapper>
     </div>

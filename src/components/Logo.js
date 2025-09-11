@@ -10,6 +10,8 @@ const Logo = ({ size = 'medium', showText = true, style = {} }) => {
         return { width: '120px', height: '120px' };
       case 'xlarge':
         return { width: '180px', height: '180px' };
+      case 'xxlarge':
+        return { width: '240px', height: '240px' };
       default:
         return { width: '100px', height: '100px' };
     }
@@ -23,6 +25,8 @@ const Logo = ({ size = 'medium', showText = true, style = {} }) => {
         return { fontSize: '24px', fontWeight: '700' };
       case 'xlarge':
         return { fontSize: '32px', fontWeight: '800' };
+      case 'xxlarge':
+        return { fontSize: '40px', fontWeight: '900' };
       default:
         return { fontSize: '18px', fontWeight: '600' };
     }
@@ -71,7 +75,7 @@ const Logo = ({ size = 'medium', showText = true, style = {} }) => {
           alignItems: 'center',
           justifyContent: 'center',
           color: 'white',
-          fontSize: size === 'small' ? '12px' : size === 'large' ? '24px' : size === 'xlarge' ? '36px' : '18px',
+          fontSize: size === 'small' ? '12px' : size === 'large' ? '24px' : size === 'xlarge' ? '36px' : size === 'xxlarge' ? '48px' : '18px',
           fontWeight: 'bold'
         }}>
           CA
@@ -93,7 +97,7 @@ const Logo = ({ size = 'medium', showText = true, style = {} }) => {
             Carvajal AutoTech
           </div>
           <div style={{
-            fontSize: size === 'small' ? '10px' : size === 'large' ? '14px' : '12px',
+            fontSize: size === 'small' ? '10px' : size === 'large' ? '14px' : size === 'xlarge' ? '16px' : size === 'xxlarge' ? '18px' : '12px',
             color: AppConstants.colors.textSecondary,
             fontWeight: '400'
           }}>

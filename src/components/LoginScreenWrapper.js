@@ -2,7 +2,7 @@ import React from 'react';
 import { getColor } from '../utils/constants';
 import Logo from './Logo';
 
-const LoginScreenWrapper = ({ children, showLogo = true, logoPosition = 'top' }) => {
+const LoginScreenWrapper = ({ children, showLogo = true, logoPosition = 'top', hideLogoForSelection = false }) => {
   const getLogoPosition = () => {
     switch (logoPosition) {
       case 'center':
@@ -42,7 +42,7 @@ const LoginScreenWrapper = ({ children, showLogo = true, logoPosition = 'top' })
       }}
     >
       {/* Logo */}
-      {showLogo && (
+      {showLogo && !hideLogoForSelection && (
         <div style={getLogoPosition()}>
           <Logo 
             size={logoPosition === 'center' ? 'xlarge' : 'medium'} 
@@ -56,7 +56,7 @@ const LoginScreenWrapper = ({ children, showLogo = true, logoPosition = 'top' })
       <div style={{ 
         maxWidth: '460px', 
         width: '100%',
-        marginTop: logoPosition === 'center' ? '230px' : '120px', // Aumentar margen para evitar sobreposición
+        marginTop: hideLogoForSelection ? '0px' : (logoPosition === 'center' ? '230px' : '120px'), // Sin margen si no hay logo
         boxSizing: 'border-box'
       }}>
         {children}
