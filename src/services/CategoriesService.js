@@ -3,13 +3,19 @@ import { supabase } from './supabase';
 class CategoriesService {
   async getActiveCategories() {
     try {
+      console.log('🔍 Buscando categorías activas...');
       const { data, error } = await supabase
         .from('categories')
         .select('*')
         .eq('is_active', true)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Error en query de categorías:', error);
+        throw error;
+      }
+      
+      console.log('✅ Categorías encontradas:', data?.length || 0, data);
       return data || [];
     } catch (error) {
       console.error('❌ Error obteniendo categorías:', error);

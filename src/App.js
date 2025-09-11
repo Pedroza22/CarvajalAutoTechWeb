@@ -87,17 +87,22 @@ function App() {
   // Cargar datos del dashboard cuando hay usuario estudiante
   useEffect(() => {
     const loadStudentData = async () => {
-      if (!user || userRole !== 'student') return;
+      if (!user || userRole !== 'student') {
+        console.log('🚫 No cargando datos - usuario:', user?.email, 'rol:', userRole);
+        return;
+      }
       try {
+        console.log('🔄 Cargando datos del estudiante...');
         setIsLoadingCategories(true);
         const [cats, stats] = await Promise.all([
           CategoriesService.getActiveCategories(),
           StatisticsService.getDashboardStats(user.id)
         ]);
+        console.log('📊 Datos cargados - categorías:', cats?.length, 'stats:', stats);
         setCategories(Array.isArray(cats) ? cats : []);
         setStudentStats(stats || {});
       } catch (e) {
-        console.error('Error cargando datos del estudiante:', e);
+        console.error('❌ Error cargando datos del estudiante:', e);
         setCategories([]);
         setStudentStats({});
       } finally {
