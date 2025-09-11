@@ -81,7 +81,7 @@ export const useAuth = () => {
   };
 
   // Función de registro
-  const signUp = async (firstName, lastName, email, password) => {
+  const signUp = async (email, password, firstName, lastName) => {
     setLoading(true);
     try {
       const { data, error } = await supabase.auth.signUp({
