@@ -18,6 +18,7 @@ const CategoryQuestionsPage = ({ category, user, onBack, onStartQuiz }) => {
   const [stats, setStats] = useState({
     totalAnswers: 0,
     correctAnswers: 0,
+    incorrectAnswers: 0,
     accuracy: 0
   });
 
@@ -68,6 +69,7 @@ const CategoryQuestionsPage = ({ category, user, onBack, onStartQuiz }) => {
   const handleSubmitQuiz = async () => {
     try {
       setSavingAnswers(true);
+      console.log('🚀 Iniciando envío del quiz...');
       
       // Guardar respuestas en la base de datos
       await StudentCategoriesService.saveStudentAnswers(user.id, category.id, studentAnswers);
@@ -81,13 +83,14 @@ const CategoryQuestionsPage = ({ category, user, onBack, onStartQuiz }) => {
     } catch (error) {
       console.error('❌ Error enviando quiz:', error);
       // Aún así marcar como completado para mostrar estadísticas locales
+      const totalAnswered = Object.keys(studentAnswers).length;
       const localStats = {
         totalQuestions: questions.length,
-        totalAnswers: Object.keys(studentAnswers).length,
+        totalAnswers: totalAnswered,
         correctAnswers: 0, // No podemos calcular sin conexión
-        incorrectAnswers: 0,
+        incorrectAnswers: totalAnswered, // Asumir todas incorrectas por ahora
         accuracy: 0,
-        completionRate: Math.round((Object.keys(studentAnswers).length / questions.length) * 100),
+        completionRate: Math.round((totalAnswered / questions.length) * 100),
         score: 0,
         maxScore: questions.length
       };
@@ -136,10 +139,17 @@ const CategoryQuestionsPage = ({ category, user, onBack, onStartQuiz }) => {
     // Detener el temporizador actual
     setTimerActive(false);
     
+    console.log('🔄 Navegando a siguiente pregunta. Actual:', currentQuestionIndex, 'Total:', questions.length);
+    
     if (currentQuestionIndex < questions.length - 1) {
-      setCurrentQuestionIndex(prev => prev + 1);
+      setCurrentQuestionIndex(prev => {
+        const next = prev + 1;
+        console.log('➡️ Avanzando a pregunta:', next + 1);
+        return next;
+      });
     } else {
       // Si es la última pregunta, completar el quiz
+      console.log('🏁 Última pregunta alcanzada, completando quiz...');
       handleSubmitQuiz();
     }
   };
@@ -898,6 +908,162 @@ const CategoryQuestionsPage = ({ category, user, onBack, onStartQuiz }) => {
                   style={{
                     fontSize: '0.9rem',
                     padding: '8px 16px'
+                  }}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Resultados del Quiz Completado */}
+          {quizCompleted && quizStats && (
+            <div style={{
+              background: safeColor('cardBg'),
+              borderRadius: '16px',
+              padding: '32px',
+              marginTop: '24px',
+              border: `1px solid ${safeColor('border')}`,
+              textAlign: 'center'
+            }}>
+              <div style={{ fontSize: '64px', marginBottom: '24px' }}>🎉</div>
+              <h2 style={{
+                fontSize: '2rem',
+                fontWeight: '600',
+                color: safeColor('textPrimary'),
+                margin: '0 0 16px 0'
+              }}>
+                ¡Quiz Completado!
+              </h2>
+              <p style={{
+                fontSize: '1.1rem',
+                color: safeColor('textMuted'),
+                margin: '0 0 32px 0'
+              }}>
+                Has terminado el quiz de {category?.name || 'esta categoría'}
+              </p>
+
+              {/* Estadísticas del Quiz */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+                gap: '20px',
+                marginBottom: '32px'
+              }}>
+                <div style={{
+                  background: safeColor('primary') + '20',
+                  borderRadius: '12px',
+                  padding: '20px',
+                  border: `1px solid ${safeColor('primary')}33`
+                }}>
+                  <div style={{ fontSize: '2rem', marginBottom: '8px' }}>❓</div>
+                  <div style={{
+                    fontSize: '1.5rem',
+                    fontWeight: '600',
+                    color: safeColor('primary'),
+                    marginBottom: '4px'
+                  }}>
+                    {quizStats.totalQuestions}
+                  </div>
+                  <div style={{
+                    fontSize: '0.9rem',
+                    color: safeColor('textMuted')
+                  }}>
+                    Preguntas
+                  </div>
+                </div>
+
+                <div style={{
+                  background: safeColor('success') + '20',
+                  borderRadius: '12px',
+                  padding: '20px',
+                  border: `1px solid ${safeColor('success')}33`
+                }}>
+                  <div style={{ fontSize: '2rem', marginBottom: '8px' }}>✅</div>
+                  <div style={{
+                    fontSize: '1.5rem',
+                    fontWeight: '600',
+                    color: safeColor('success'),
+                    marginBottom: '4px'
+                  }}>
+                    {quizStats.correctAnswers}
+                  </div>
+                  <div style={{
+                    fontSize: '0.9rem',
+                    color: safeColor('textMuted')
+                  }}>
+                    Correctas
+                  </div>
+                </div>
+
+                <div style={{
+                  background: safeColor('error') + '20',
+                  borderRadius: '12px',
+                  padding: '20px',
+                  border: `1px solid ${safeColor('error')}33`
+                }}>
+                  <div style={{ fontSize: '2rem', marginBottom: '8px' }}>❌</div>
+                  <div style={{
+                    fontSize: '1.5rem',
+                    fontWeight: '600',
+                    color: safeColor('error'),
+                    marginBottom: '4px'
+                  }}>
+                    {quizStats.incorrectAnswers}
+                  </div>
+                  <div style={{
+                    fontSize: '0.9rem',
+                    color: safeColor('textMuted')
+                  }}>
+                    Incorrectas
+                  </div>
+                </div>
+
+                <div style={{
+                  background: safeColor('warning') + '20',
+                  borderRadius: '12px',
+                  padding: '20px',
+                  border: `1px solid ${safeColor('warning')}33`
+                }}>
+                  <div style={{ fontSize: '2rem', marginBottom: '8px' }}>📊</div>
+                  <div style={{
+                    fontSize: '1.5rem',
+                    fontWeight: '600',
+                    color: safeColor('warning'),
+                    marginBottom: '4px'
+                  }}>
+                    {quizStats.accuracy}%
+                  </div>
+                  <div style={{
+                    fontSize: '0.9rem',
+                    color: safeColor('textMuted')
+                  }}>
+                    Precisión
+                  </div>
+                </div>
+              </div>
+
+              {/* Botones de acción */}
+              <div style={{
+                display: 'flex',
+                gap: '16px',
+                justifyContent: 'center',
+                flexWrap: 'wrap'
+              }}>
+                <CustomButton
+                  text="Ver Resultados Detallados"
+                  onClick={() => setShowResults(true)}
+                  variant="primary"
+                  style={{
+                    fontSize: '1rem',
+                    padding: '12px 24px'
+                  }}
+                />
+                <CustomButton
+                  text="Volver al Dashboard"
+                  onClick={onBack}
+                  variant="outline"
+                  style={{
+                    fontSize: '1rem',
+                    padding: '12px 24px'
                   }}
                 />
               </div>
