@@ -1,4 +1,3 @@
-
 import { supabase } from './supabase';
 
 class QuestionsService {

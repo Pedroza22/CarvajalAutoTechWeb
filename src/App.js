@@ -198,7 +198,7 @@ function App() {
               setCurrentPage(page);
               if (data) setCurrentPageData(data);
             }} 
-            questionData={currentPageData}
+            questionData={currentPageData?.questionData || null}
           />
         )}
         {currentPage === 'admin-connection-test' && (

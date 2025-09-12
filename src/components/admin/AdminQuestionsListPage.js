@@ -57,7 +57,7 @@ const AdminQuestionsListPage = ({ onNavigate }) => {
 
   const handleEditQuestion = (question) => {
     console.log('🔍 Editando pregunta:', question);
-    onNavigate('admin-create-question', question);
+    onNavigate('admin-create-question', { questionData: question });
   };
 
   const handleDeleteQuestion = async (questionId) => {
@@ -340,7 +340,7 @@ const AdminQuestionsListPage = ({ onNavigate }) => {
         </div>
         <CustomButton
           text="Nueva Pregunta"
-          onClick={() => onNavigate && onNavigate('admin-create-question')}
+          onClick={() => onNavigate && onNavigate('admin-create-question', null)}
           icon="➕"
           fullWidth={window.innerWidth <= 480}
         />
