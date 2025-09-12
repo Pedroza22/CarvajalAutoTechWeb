@@ -79,11 +79,18 @@ class QuestionsService {
         userId: user?.id
       });
       
-      // Preparar datos para insertar
+      // Mapear tipos de pregunta como en Flutter
+      const typeMapping = {
+        'multiple_choice': 'multipleChoice',
+        'true_false': 'trueFalse', 
+        'free_text': 'freeText'
+      };
+
+      // Preparar datos para insertar (alineado con Flutter)
       const insertData = {
         category_id: questionData.categoryId,
-        type: questionData.type,
-        question: questionData.question,
+        type: typeMapping[questionData.type] || questionData.type, // Usar mapeo de Flutter
+        question: questionData.question, // Campo 'question' como en Flutter
         options: questionData.options,
         correct_answer: questionData.correctAnswer,
         time_limit: questionData.timeLimit,
@@ -91,9 +98,9 @@ class QuestionsService {
         created_by: user?.id
       };
 
-      // Solo agregar image_url si existe
+      // Solo agregar imageUrl si existe (como en Flutter)
       if (questionData.imageUrl) {
-        insertData.image_url = questionData.imageUrl;
+        insertData.imageUrl = questionData.imageUrl;
       }
 
       const { data, error } = await supabase
