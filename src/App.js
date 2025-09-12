@@ -51,6 +51,19 @@ function App() {
       }
     }
   }, [user, userRole, currentPage]);
+
+  // Forzar que los estudiantes aterricen en el dashboard
+  useEffect(() => {
+    if (user && userRole === 'student') {
+      // Solo redirigir desde páginas de autenticación o páginas no student
+      const studentPages = ['student-home', 'category-questions'];
+      if (currentPage === 'student-auth' || (!studentPages.includes(currentPage) && !String(currentPage).startsWith('student-'))) {
+        console.log('Redirigiendo estudiante a student-home desde:', currentPage);
+        setCurrentPage('student-home');
+      }
+    }
+  }, [user, userRole, currentPage]);
+
   // Cargar perfil desde user_profiles para obtener rol persistido
   useEffect(() => {
     const loadProfile = async () => {
@@ -101,9 +114,9 @@ function App() {
         console.log('🔄 Cargando datos del estudiante...');
         setIsLoadingCategories(true);
         
-        // Usar las nuevas funcionalidades: categorías asignadas y estadísticas publicadas
+        // Usar las nuevas funcionalidades: categorías publicadas y estadísticas publicadas
         const [cats, stats] = await Promise.all([
-          CategoriesService.getAssignedCategories(user.id),
+          CategoriesService.getPublishedCategoriesForStudent(user.id),
           StatisticsService.getPublishedCategoryStats(user.id)
         ]);
         
@@ -168,7 +181,10 @@ function App() {
           }} />
         )}
         {currentPage === 'admin-categories' && <AdminCategoriesPage onNavigate={setCurrentPage} />}
-        {currentPage === 'admin-questions' && <AdminQuestionsListPage onNavigate={setCurrentPage} />}
+        {currentPage === 'admin-questions' && <AdminQuestionsListPage onNavigate={(page, data) => {
+          setCurrentPage(page);
+          setCurrentPageData(data);
+        }} />}
         {currentPage === 'admin-stats' && <AdminStatisticsPage onNavigate={setCurrentPage} />}
         {currentPage === 'admin-students' && <AdminStudentsPage onNavigate={(page, data) => {
           setCurrentPage(page);
@@ -262,7 +278,7 @@ function App() {
             <CategoryQuestionsPage
               category={currentPageData.category}
               user={user}
-              onBack={() => setCurrentPage('student-dashboard')}
+              onBack={() => setCurrentPage('student-home')}
               onStartQuiz={(categoryId) => console.log('Start quiz category:', categoryId)}
             />
           );
@@ -282,9 +298,9 @@ function App() {
             }}
             onLogout={signOut}
             onStartQuiz={(categoryId) => console.log('Start quiz category:', categoryId)}
-            onViewCategoryQuestions={(category) => {
-              setCurrentPage('category-questions');
-              setCurrentPageData({ category });
+            onNavigate={(page, data) => {
+              setCurrentPage(page);
+              setCurrentPageData(data);
             }}
           />
         );
@@ -393,6 +409,7 @@ function App() {
           <UnifiedAuthScreen 
             onSuccess={(user) => {
               console.log('Autenticación exitosa:', user);
+              setCurrentPage('student-home');
             }}
             onBack={() => setCurrentPage('selection')}
           />
@@ -405,6 +422,14 @@ function App() {
             }}
             onBack={() => setCurrentPage('selection')}
             isAdmin={true}
+          />
+        );
+      case 'category-questions':
+        return (
+          <CategoryQuestionsPage 
+            user={user}
+            category={currentPageData?.category}
+            onBack={() => setCurrentPage('student-home')}
           />
         );
       case 'connection-test':

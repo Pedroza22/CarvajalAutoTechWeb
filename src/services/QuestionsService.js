@@ -242,4 +242,5 @@ class QuestionsService {
   }
 }
 
-export default new QuestionsService();
+const questionsService = new QuestionsService();
+export default questionsService;

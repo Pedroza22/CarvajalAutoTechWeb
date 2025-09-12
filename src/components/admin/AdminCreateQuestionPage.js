@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { getColor } from '../../utils/constants';
 import QuestionsService from '../../services/QuestionsService';
 import CategoriesService from '../../services/CategoriesService';
@@ -18,18 +18,11 @@ const AdminCreateQuestionPage = ({ onNavigate, questionData = null }) => {
     imageUrl: ''
   });
   const [selectedFile, setSelectedFile] = useState(null);
-  const [uploading, setUploading] = useState(false);
+  // const [uploading, setUploading] = useState(false);
 
   const isEditing = !!questionData;
 
-  useEffect(() => {
-    loadCategories();
-    if (isEditing) {
-      loadQuestionData();
-    }
-  }, []);
-
-  const loadCategories = async () => {
+  const loadCategories = useCallback(async () => {
     try {
       const categoriesData = await CategoriesService.getAllCategories();
       setCategories(categoriesData);
@@ -39,9 +32,9 @@ const AdminCreateQuestionPage = ({ onNavigate, questionData = null }) => {
     } catch (error) {
       console.error('❌ Error cargando categorías:', error);
     }
-  };
+  }, [formData.categoryId]);
 
-  const loadQuestionData = () => {
+  const loadQuestionData = useCallback(() => {
     if (questionData) {
       console.log('🔍 Cargando datos de pregunta:', questionData);
       
@@ -65,7 +58,14 @@ const AdminCreateQuestionPage = ({ onNavigate, questionData = null }) => {
         imageUrl: questionData.imageUrl || questionData.image_url || ''
       });
     }
-  };
+  }, [questionData]);
+
+  useEffect(() => {
+    loadCategories();
+    if (isEditing) {
+      loadQuestionData();
+    }
+  }, [isEditing, loadCategories, loadQuestionData]);
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -93,7 +93,7 @@ const AdminCreateQuestionPage = ({ onNavigate, questionData = null }) => {
 
   const uploadFile = async (file) => {
     try {
-      setUploading(true);
+      // setUploading(true);
       
       // Crear un nombre único para el archivo
       const fileExt = file.name.split('.').pop();
@@ -101,7 +101,7 @@ const AdminCreateQuestionPage = ({ onNavigate, questionData = null }) => {
       const filePath = `questions/${fileName}`;
       
       // Subir archivo a Supabase Storage
-      const { data, error } = await supabase.client.storage
+      const { error } = await supabase.client.storage
         .from('images')
         .upload(filePath, file);
       
@@ -117,7 +117,7 @@ const AdminCreateQuestionPage = ({ onNavigate, questionData = null }) => {
       console.error('Error subiendo archivo:', error);
       throw error;
     } finally {
-      setUploading(false);
+      // setUploading(false);
     }
   };
 
@@ -209,23 +209,23 @@ const AdminCreateQuestionPage = ({ onNavigate, questionData = null }) => {
 
   const safeColor = (colorName) => getColor(colorName) || '#ffffff';
 
-  const getQuestionTypeIcon = (type) => {
-    const iconMap = {
-      'multiple_choice': '🔘',
-      'true_false': '☑️',
-      'free_text': '📝'
-    };
-    return iconMap[type] || '❓';
-  };
+  // const getQuestionTypeIcon = (type) => {
+  //   const iconMap = {
+  //     'multiple_choice': '🔘',
+  //     'true_false': '☑️',
+  //     'free_text': '📝'
+  //   };
+  //   return iconMap[type] || '❓';
+  // };
 
-  const getQuestionTypeLabel = (type) => {
-    const typeMap = {
-      'multiple_choice': 'Opción Múltiple',
-      'true_false': 'Verdadero/Falso',
-      'free_text': 'Texto Libre'
-    };
-    return typeMap[type] || type;
-  };
+  // const getQuestionTypeLabel = (type) => {
+  //   const typeMap = {
+  //     'multiple_choice': 'Opción Múltiple',
+  //     'true_false': 'Verdadero/Falso',
+  //     'free_text': 'Texto Libre'
+  //   };
+  //   return typeMap[type] || type;
+  // };
 
   return (
     <div style={{

@@ -5,6 +5,7 @@ const CategoryCard = ({
   category, 
   onEdit, 
   onDelete, 
+  onAssign,
   onTap,
   showActions = true 
 }) => {
@@ -177,6 +178,15 @@ const CategoryCard = ({
         
         {showActions && (
           <div style={actionsStyle}>
+            <div 
+              style={actionButtonStyle(AppTheme.primaryRed)}
+              onClick={(e) => {
+                e.stopPropagation();
+                onAssign && onAssign();
+              }}
+            >
+              <span style={actionIconStyle(AppTheme.primaryRed)}>👥</span>
+            </div>
             <div 
               style={actionButtonStyle(AppTheme.info)}
               onClick={(e) => {

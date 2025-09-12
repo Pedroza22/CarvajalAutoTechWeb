@@ -231,6 +231,38 @@ class StudentsService {
     }
   }
 
+  // Obtener estado de publicación de categorías para un estudiante
+  async getStudentCategoryPublicationStatus(studentId) {
+    try {
+      console.log('🔍 Obteniendo estado de publicación para estudiante:', studentId);
+      
+      const { data, error } = await supabase
+        .from('student_categories')
+        .select(`
+          category_id,
+          published,
+          categories (
+            id,
+            name,
+            description
+          )
+        `)
+        .eq('student_id', studentId)
+        .order('categories(name)');
+
+      if (error) {
+        console.error('❌ Error obteniendo estado de publicación:', error);
+        throw error;
+      }
+
+      console.log('✅ Estado de publicación obtenido:', data?.length || 0);
+      return data || [];
+    } catch (error) {
+      console.error('❌ Error en getStudentCategoryPublicationStatus:', error);
+      throw error;
+    }
+  }
+
   // Función auxiliar para obtener nombre de display
   getDisplayName(student) {
     // 1) full_name desde la vista
@@ -284,4 +316,5 @@ class StudentsService {
   }
 }
 
-export default new StudentsService();
+const studentsService = new StudentsService();
+export default studentsService;

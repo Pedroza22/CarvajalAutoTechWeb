@@ -304,7 +304,7 @@ class StatisticsService {
     try {
       const { count, error } = await supabase
         .from('student_answers')
-        .select('quiz_id', { count: 'exact', head: true });
+        .select('question_id', { count: 'exact', head: true });
 
       if (error) throw error;
       return count || 0;
@@ -370,10 +370,14 @@ class StatisticsService {
    */
   async getRecentActivity(startDate, endDate) {
     try {
+      // Asegurar que las fechas sean objetos Date válidos
+      const start = startDate instanceof Date ? startDate : new Date(startDate);
+      const end = endDate instanceof Date ? endDate : new Date(endDate);
+      
       const { data, error } = await supabase
         .from('student_answers')
         .select(`
-          created_at,
+          answered_at,
           student_id,
           is_correct,
           questions (
@@ -383,9 +387,9 @@ class StatisticsService {
             )
           )
         `)
-        .gte('created_at', startDate.toISOString())
-        .lte('created_at', endDate.toISOString())
-        .order('created_at', { ascending: false })
+        .gte('answered_at', start.toISOString())
+        .lte('answered_at', end.toISOString())
+        .order('answered_at', { ascending: false })
         .limit(10);
 
       if (error) throw error;
@@ -397,7 +401,7 @@ class StatisticsService {
         type: 'quiz_completed',
         student: `Estudiante ${activity.student_id.substring(0, 8)}`,
         score: activity.is_correct ? 100 : 0,
-        date: activity.created_at,
+        date: activity.answered_at,
         category: activity.questions?.categories?.name || 'Sin categoría'
       }));
     } catch (error) {
@@ -593,7 +597,6 @@ class StatisticsService {
           created_at,
           questions (
             id,
-            difficulty,
             categories (
               name
             )
@@ -738,6 +741,126 @@ class StatisticsService {
         total: 0,
         average: 0,
         maximum: 0
+      };
+    }
+  }
+
+  /**
+   * Obtiene el estado de publicación de categorías para un estudiante
+   */
+  async getCategoryPublicationStatus(studentId) {
+    try {
+      console.log('🔍 Obteniendo estado de publicación para estudiante:', studentId);
+      
+      const { data, error } = await supabase
+        .from('student_categories')
+        .select(`
+          category_id,
+          published,
+          categories (
+            id,
+            name
+          )
+        `)
+        .eq('student_id', studentId);
+
+      if (error) {
+        console.error('❌ Error obteniendo estado de publicación:', error);
+        throw error;
+      }
+
+      console.log('✅ Estado de publicación obtenido:', data?.length || 0);
+      return data || [];
+    } catch (error) {
+      console.error('❌ Error en getCategoryPublicationStatus:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Obtiene estadísticas de categorías publicadas para un estudiante
+   */
+  async getPublishedCategoryStats(studentId) {
+    try {
+      console.log('🔍 Obteniendo estadísticas de categorías publicadas para estudiante:', studentId);
+      
+      // Obtener categorías publicadas
+      const { data: publishedCategories, error: publishedError } = await supabase
+        .from('student_categories')
+        .select(`
+          category_id,
+          published,
+          categories (
+            id,
+            name,
+            description
+          )
+        `)
+        .eq('student_id', studentId)
+        .eq('published', true);
+
+      if (publishedError) {
+        console.error('❌ Error obteniendo categorías publicadas:', publishedError);
+        throw publishedError;
+      }
+
+      if (!publishedCategories || publishedCategories.length === 0) {
+        console.log('⚠️ No hay categorías publicadas para el estudiante');
+        return {
+          totalCategories: 0,
+          totalQuestions: 0,
+          totalQuizzes: 0,
+          averageScore: 0,
+          categories: []
+        };
+      }
+
+      // Obtener estadísticas de respuestas para estas categorías
+      const categoryIds = publishedCategories.map(c => c.category_id);
+      
+      const { data: answers, error: answersError } = await supabase
+        .from('student_answers')
+        .select(`
+          id,
+          is_correct,
+          questions (
+            id,
+            category_id
+          )
+        `)
+        .eq('student_id', studentId)
+        .in('questions.category_id', categoryIds);
+
+      if (answersError) {
+        console.error('❌ Error obteniendo respuestas:', answersError);
+        // Continuar sin respuestas
+      }
+
+      const totalAnswers = answers?.length || 0;
+      const correctAnswers = answers?.filter(a => a.is_correct).length || 0;
+      const averageScore = totalAnswers > 0 ? Math.round((correctAnswers / totalAnswers) * 100) : 0;
+
+      console.log('✅ Estadísticas de categorías publicadas obtenidas');
+      return {
+        totalCategories: publishedCategories.length,
+        totalQuestions: 0, // Se puede calcular si es necesario
+        totalQuizzes: Math.ceil(totalAnswers / 10), // Estimación
+        averageScore,
+        categories: publishedCategories.map(cat => ({
+          id: cat.category_id,
+          name: cat.categories?.name || 'Sin nombre',
+          description: cat.categories?.description || '',
+          published: cat.published
+        }))
+      };
+    } catch (error) {
+      console.error('❌ Error en getPublishedCategoryStats:', error);
+      return {
+        totalCategories: 0,
+        totalQuestions: 0,
+        totalQuizzes: 0,
+        averageScore: 0,
+        categories: []
       };
     }
   }

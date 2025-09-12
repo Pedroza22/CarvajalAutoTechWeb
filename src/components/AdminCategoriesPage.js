@@ -14,6 +14,12 @@ const AdminCategoriesPage = ({ onNavigate }) => {
   const [editingCategory, setEditingCategory] = useState(null);
   const [formData, setFormData] = useState({ name: '', description: '' });
   const [saving, setSaving] = useState(false);
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [assigningCategory, setAssigningCategory] = useState(null);
+  const [students, setStudents] = useState([]);
+  const [selectedStudents, setSelectedStudents] = useState([]);
+  const [studentSearchTerm, setStudentSearchTerm] = useState('');
+  const [studentPublicationStatus, setStudentPublicationStatus] = useState({});
 
   useEffect(() => {
     loadCategories();
@@ -26,10 +32,53 @@ const AdminCategoriesPage = ({ onNavigate }) => {
   const loadCategories = async () => {
     setLoading(true);
     try {
+      console.log('🔄 Cargando categorías... [ARCHIVO CORRECTO]');
       const rows = await CategoriesService.getAllCategories();
-      setCategories(Array.isArray(rows) ? rows : []);
+      console.log('📋 Categorías obtenidas:', rows?.length || 0);
+      
+      const categoriesWithQuestions = await Promise.all(
+        (Array.isArray(rows) ? rows : []).map(async (category) => {
+          try {
+            console.log(`🔍 Cargando preguntas para categoría: ${category.name} (ID: ${category.id})`);
+            
+            const { supabase } = await import('../services/supabase');
+            
+            // Primero verificar si hay preguntas en total
+            const { data: allQuestions, error: allQuestionsError } = await supabase
+              .from('questions')
+              .select('id, category_id');
+              
+            console.log(`📊 Total de preguntas en la DB:`, allQuestions?.length || 0);
+            if (allQuestionsError) {
+              console.error('❌ Error consultando todas las preguntas:', allQuestionsError);
+            }
+            
+            // Ahora consultar por categoría específica
+            const { data: questions, error } = await supabase
+              .from('questions')
+              .select('id, category_id')
+              .eq('category_id', category.id);
+
+            if (error) {
+              console.error(`❌ Error cargando preguntas para categoría ${category.id}:`, error);
+              return { ...category, questionCount: 0 };
+            }
+
+            const questionCount = questions?.length || 0;
+            console.log(`✅ Categoría ${category.name}: ${questionCount} preguntas`);
+            console.log(`📋 Preguntas encontradas:`, questions?.map(q => ({ id: q.id, category_id: q.category_id })));
+            return { ...category, questionCount };
+          } catch (error) {
+            console.error(`❌ Error cargando preguntas para categoría ${category.id}:`, error);
+            return { ...category, questionCount: 0 };
+          }
+        })
+      );
+      
+      console.log('📊 Categorías con preguntas cargadas:', categoriesWithQuestions);
+      setCategories(categoriesWithQuestions);
     } catch (error) {
-      console.error('Error cargando categorías:', error);
+      console.error('❌ Error cargando categorías:', error);
       setCategories([]);
     } finally {
       setLoading(false);
@@ -122,6 +171,155 @@ const AdminCategoriesPage = ({ onNavigate }) => {
       }
     } catch (error) {
       console.error('Error eliminando categoría:', error);
+    }
+  };
+
+  const handleAssign = async (category) => {
+    setAssigningCategory(category);
+    setShowAssignModal(true);
+    await loadStudents();
+    await loadAssignedStudents(category.id);
+  };
+
+  const loadStudents = async () => {
+    try {
+      const { supabase } = await import('../services/supabase');
+      const { data, error } = await supabase
+        .from('app_users_enriched')
+        .select('id, full_name, email')
+        .order('full_name');
+
+      if (error) throw error;
+      setStudents(data || []);
+    } catch (error) {
+      console.error('Error cargando estudiantes:', error);
+      setStudents([]);
+    }
+  };
+
+  const loadAssignedStudents = async (categoryId) => {
+    try {
+      const { supabase } = await import('../services/supabase');
+      const { data, error } = await supabase
+        .from('student_categories')
+        .select('student_id, published')
+        .eq('category_id', categoryId);
+
+      if (error) throw error;
+      
+      const assignedStudentIds = (data || []).map(item => item.student_id);
+      const publicationStatus = {};
+      
+      (data || []).forEach(item => {
+        publicationStatus[item.student_id] = item.published;
+      });
+      
+      setSelectedStudents(assignedStudentIds);
+      setStudentPublicationStatus(publicationStatus);
+    } catch (error) {
+      console.error('Error cargando estudiantes asignados:', error);
+      setSelectedStudents([]);
+      setStudentPublicationStatus({});
+    }
+  };
+
+  const handleStudentToggle = (studentId) => {
+    setSelectedStudents(prev => {
+      if (prev.includes(studentId)) {
+        return prev.filter(id => id !== studentId);
+      } else {
+        return [...prev, studentId];
+      }
+    });
+  };
+
+  const handlePublicationToggle = async (studentId, published) => {
+    if (!assigningCategory) return;
+    
+    try {
+      const { supabase } = await import('../services/supabase');
+      const { error } = await supabase
+        .from('student_categories')
+        .update({ published })
+        .eq('student_id', studentId)
+        .eq('category_id', assigningCategory.id);
+
+      if (error) throw error;
+      
+      setStudentPublicationStatus(prev => ({
+        ...prev,
+        [studentId]: published
+      }));
+      
+      console.log(`✅ Categoría ${published ? 'publicada' : 'despublicada'} para estudiante ${studentId}`);
+    } catch (error) {
+      console.error('Error cambiando publicación:', error);
+      alert('Error cambiando publicación: ' + error.message);
+    }
+  };
+
+  const handleAssignSubmit = async () => {
+    if (!assigningCategory) return;
+
+    try {
+      const { supabase } = await import('../services/supabase');
+      
+      // Obtener estudiantes previamente asignados
+      const { data: previouslyAssigned } = await supabase
+        .from('student_categories')
+        .select('student_id')
+        .eq('category_id', assigningCategory.id);
+
+      const previouslyAssignedIds = previouslyAssigned?.map(item => item.student_id) || [];
+
+      // Estudiantes a agregar
+      const studentsToAdd = selectedStudents.filter(id => !previouslyAssignedIds.includes(id));
+      
+      // Estudiantes a eliminar
+      const studentsToRemove = previouslyAssignedIds.filter(id => !selectedStudents.includes(id));
+
+      // Agregar estudiantes
+      for (const studentId of studentsToAdd) {
+        await supabase
+          .from('student_categories')
+          .insert({
+            student_id: studentId,
+            category_id: assigningCategory.id,
+            published: false
+          });
+      }
+
+      // Eliminar estudiantes
+      for (const studentId of studentsToRemove) {
+        await supabase
+          .from('student_categories')
+          .delete()
+          .eq('student_id', studentId)
+          .eq('category_id', assigningCategory.id);
+      }
+
+      // Mostrar notificación de éxito
+      const addedCount = studentsToAdd.length;
+      const removedCount = studentsToRemove.length;
+      let message = 'Estudiantes asignados correctamente';
+      
+      if (addedCount > 0 && removedCount > 0) {
+        message = `${addedCount} estudiantes agregados, ${removedCount} estudiantes removidos`;
+      } else if (addedCount > 0) {
+        message = `${addedCount} estudiantes agregados`;
+      } else if (removedCount > 0) {
+        message = `${removedCount} estudiantes removidos`;
+      }
+      
+      alert(message);
+      setShowAssignModal(false);
+      setAssigningCategory(null);
+      setSelectedStudents([]);
+      setStudentSearchTerm('');
+      setStudentPublicationStatus({});
+    } catch (error) {
+      console.error('Error asignando estudiantes:', error);
+      alert('Error asignando estudiantes: ' + error.message);
     }
   };
 
@@ -408,6 +606,7 @@ const AdminCategoriesPage = ({ onNavigate }) => {
               category={category}
               onEdit={() => handleEdit(category)}
               onDelete={() => handleDelete(category)}
+              onAssign={() => handleAssign(category)}
               showActions={true}
             />
           ))}
@@ -423,6 +622,224 @@ const AdminCategoriesPage = ({ onNavigate }) => {
           <span>➕</span>
           Nueva Categoría
         </button>
+      )}
+
+      {/* Modal para asignar estudiantes */}
+      {showAssignModal && assigningCategory && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.8)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            background: AppTheme.dark,
+            borderRadius: '12px',
+            padding: '24px',
+            maxWidth: '600px',
+            width: '90%',
+            maxHeight: '80vh',
+            overflow: 'auto'
+          }}>
+            <h3 style={{
+              color: AppTheme.white,
+              marginBottom: '16px',
+              fontSize: '1.2rem'
+            }}>
+              Asignar estudiantes a: {assigningCategory.name}
+            </h3>
+            
+            <div style={{
+              background: `${AppTheme.info}20`,
+              border: `1px solid ${AppTheme.info}`,
+              borderRadius: '8px',
+              padding: '12px',
+              marginBottom: '20px'
+            }}>
+              <div style={{
+                color: AppTheme.info,
+                fontSize: '0.9rem',
+                fontWeight: '500',
+                marginBottom: '4px'
+              }}>
+                💡 Información importante:
+              </div>
+              <div style={{
+                color: AppTheme.greyLight,
+                fontSize: '0.8rem',
+                lineHeight: '1.4'
+              }}>
+                • Los estudiantes solo pueden ver las categorías que están <strong>asignadas Y publicadas</strong><br/>
+                • Usa los botones 📢/🔒 para publicar/despublicar categorías individualmente<br/>
+                • Las categorías no publicadas no aparecen en el dashboard del estudiante
+              </div>
+            </div>
+
+            {/* Búsqueda de estudiantes */}
+            <div style={{ marginBottom: '20px' }}>
+              <input
+                type="text"
+                placeholder="Buscar estudiantes..."
+                value={studentSearchTerm}
+                onChange={(e) => setStudentSearchTerm(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  borderRadius: '8px',
+                  border: `1px solid ${AppTheme.greyDark}`,
+                  background: AppTheme.dark,
+                  color: AppTheme.white,
+                  fontSize: '1rem'
+                }}
+              />
+            </div>
+
+            {/* Lista de estudiantes */}
+            <div style={{
+              maxHeight: '300px',
+              overflow: 'auto',
+              marginBottom: '20px',
+              border: `1px solid ${AppTheme.greyDark}`,
+              borderRadius: '8px',
+              padding: '8px'
+            }}>
+              {students
+                .filter(student => 
+                  student.full_name.toLowerCase().includes(studentSearchTerm.toLowerCase()) ||
+                  student.email.toLowerCase().includes(studentSearchTerm.toLowerCase())
+                )
+                .map(student => (
+                  <div
+                    key={student.id}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      padding: '12px',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      background: selectedStudents.includes(student.id) 
+                        ? `${AppTheme.primaryRed}20` 
+                        : 'transparent',
+                      border: selectedStudents.includes(student.id) 
+                        ? `1px solid ${AppTheme.primaryRed}` 
+                        : '1px solid transparent',
+                      marginBottom: '4px'
+                    }}
+                    onClick={() => handleStudentToggle(student.id)}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedStudents.includes(student.id)}
+                      onChange={() => handleStudentToggle(student.id)}
+                      style={{
+                        marginRight: '12px',
+                        transform: 'scale(1.2)'
+                      }}
+                    />
+                    <div style={{ flex: 1 }}>
+                      <div style={{
+                        color: AppTheme.white,
+                        fontWeight: '500',
+                        fontSize: '1rem'
+                      }}>
+                        {student.full_name}
+                      </div>
+                      <div style={{
+                        color: AppTheme.greyLight,
+                        fontSize: '0.9rem'
+                      }}>
+                        {student.email}
+                      </div>
+                    </div>
+                    
+                    {/* Estado de publicación */}
+                    {selectedStudents.includes(student.id) && (
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px'
+                      }}>
+                        <span style={{
+                          fontSize: '0.8rem',
+                          color: AppTheme.greyLight
+                        }}>
+                          {studentPublicationStatus[student.id] ? 'Publicada' : 'No publicada'}
+                        </span>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handlePublicationToggle(student.id, !studentPublicationStatus[student.id]);
+                          }}
+                          style={{
+                            background: studentPublicationStatus[student.id] 
+                              ? AppTheme.success 
+                              : AppTheme.warning,
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '4px',
+                            padding: '4px 8px',
+                            fontSize: '0.8rem',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          {studentPublicationStatus[student.id] ? '📢' : '🔒'}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+            </div>
+
+            {/* Botones */}
+            <div style={{
+              display: 'flex',
+              gap: '12px',
+              justifyContent: 'flex-end'
+            }}>
+              <button
+                onClick={() => {
+                  setShowAssignModal(false);
+                  setAssigningCategory(null);
+                  setSelectedStudents([]);
+                  setStudentSearchTerm('');
+                  setStudentPublicationStatus({});
+                }}
+                style={{
+                  background: 'transparent',
+                  color: AppTheme.white,
+                  border: `1px solid ${AppTheme.greyDark}`,
+                  borderRadius: '8px',
+                  padding: '10px 20px',
+                  fontSize: '1rem',
+                  cursor: 'pointer'
+                }}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleAssignSubmit}
+                style={{
+                  background: AppTheme.primaryRed,
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  padding: '10px 20px',
+                  fontSize: '1rem',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                Asignar ({selectedStudents.length})
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

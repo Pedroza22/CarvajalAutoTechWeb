@@ -203,6 +203,97 @@ class CategoriesService {
     }
   }
 
+  // Obtener solo categorías publicadas para un estudiante (para el dashboard)
+  async getPublishedCategoriesForStudent(studentId) {
+    try {
+      console.log('🔍 [SERVICIO] Obteniendo categorías publicadas para estudiante:', studentId);
+      
+      // Obtener categorías asignadas y publicadas
+      const { data: assignedData, error: assignedError } = await supabase
+        .from('student_categories')
+        .select(`
+          category_id,
+          published,
+          categories (
+            id,
+            name,
+            description,
+            is_active
+          )
+        `)
+        .eq('student_id', studentId)
+        .eq('published', true);
+
+      if (assignedError) {
+        console.error('❌ Error obteniendo categorías publicadas:', assignedError);
+        throw assignedError;
+      }
+
+      if (!assignedData || assignedData.length === 0) {
+        console.log('⚠️ [SERVICIO] No hay categorías publicadas para el estudiante');
+        console.log('🔍 [SERVICIO] Verificando si hay categorías asignadas (no publicadas)...');
+        
+        // Verificar si hay categorías asignadas pero no publicadas
+        const { data: allAssigned, error: allAssignedError } = await supabase
+          .from('student_categories')
+          .select(`
+            category_id,
+            published,
+            categories (
+              id,
+              name
+            )
+          `)
+          .eq('student_id', studentId);
+          
+        if (allAssignedError) {
+          console.error('❌ [SERVICIO] Error verificando categorías asignadas:', allAssignedError);
+        } else {
+          console.log('📋 [SERVICIO] Todas las categorías asignadas:', allAssigned?.map(item => ({
+            categoryName: item.categories?.name,
+            published: item.published
+          })));
+        }
+        
+        return [];
+      }
+
+      // Filtrar solo las categorías activas y con datos completos
+      const publishedCategories = await Promise.all(
+        assignedData
+          .filter(item => item.categories && item.categories.is_active)
+          .map(async (item) => {
+            // Obtener el conteo de preguntas para esta categoría
+                          const { data: questions, error: questionsError } = await supabase
+                            .from('questions')
+                            .select('id')
+                            .eq('category_id', item.category_id);
+
+            if (questionsError) {
+              console.warn(`Error cargando preguntas para categoría ${item.category_id}:`, questionsError);
+            }
+
+            return {
+              ...item.categories,
+              isPublished: item.published,
+              questionCount: questions?.length || 0
+            };
+          })
+      );
+
+      console.log('✅ [SERVICIO] Categorías publicadas encontradas:', publishedCategories.length);
+      console.log('📊 [SERVICIO] Detalles de categorías:', publishedCategories.map(c => ({
+        name: c.name,
+        questionCount: c.questionCount,
+        isPublished: c.isPublished
+      })));
+      return publishedCategories;
+    } catch (error) {
+      console.error('❌ Error obteniendo categorías publicadas:', error);
+      return [];
+    }
+  }
+
   // Asignar estudiante a categoría
   async assignStudentToCategory(studentId, categoryId) {
     try {
@@ -297,4 +388,5 @@ class CategoriesService {
   }
 }
 
-export default new CategoriesService();
+const categoriesService = new CategoriesService();
+export default categoriesService;

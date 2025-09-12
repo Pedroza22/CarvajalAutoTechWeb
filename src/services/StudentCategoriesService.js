@@ -1,13 +1,12 @@
 import { supabase } from './supabase';
 
 class StudentCategoriesService {
-  // Obtener categorías asignadas a un estudiante específico
-  static async getAssignedCategories(studentId) {
+  // Obtener categorías asignadas a un estudiante
+  async getAssignedCategories(studentId) {
     try {
       console.log('🔍 Obteniendo categorías asignadas para estudiante:', studentId);
-
-      // Obtener las categorías asignadas al estudiante
-      const { data: assignedCategories, error: assignedError } = await supabase
+      
+      const { data, error } = await supabase
         .from('student_categories')
         .select(`
           category_id,
@@ -16,226 +15,368 @@ class StudentCategoriesService {
             id,
             name,
             description,
-            color,
-            icon,
-            is_active,
-            created_at
+            is_active
           )
         `)
         .eq('student_id', studentId);
 
-      if (assignedError) {
-        console.error('❌ Error obteniendo categorías asignadas:', assignedError);
-        throw assignedError;
+      if (error) {
+        console.error('❌ Error obteniendo categorías asignadas:', error);
+        throw error;
       }
 
-      // Filtrar solo las categorías activas y con datos completos
-      const validCategories = assignedCategories
-        ?.filter(item => item.categories && item.categories.is_active)
-        ?.map(item => ({
-          ...item.categories,
-          isPublished: item.published,
-          assignedAt: item.created_at
-        })) || [];
-
-      console.log('✅ Categorías asignadas obtenidas:', validCategories.length);
-      return validCategories;
+      console.log('✅ Categorías asignadas obtenidas:', data?.length || 0);
+      return data || [];
     } catch (error) {
       console.error('❌ Error en getAssignedCategories:', error);
+      return [];
+    }
+  }
+
+  // Asignar categoría a estudiante
+  async assignCategoryToStudent(studentId, categoryId, published = false) {
+    try {
+      console.log('🔗 Asignando categoría a estudiante:', { studentId, categoryId, published });
+      
+      const { data, error } = await supabase
+        .from('student_categories')
+        .upsert({
+          student_id: studentId,
+          category_id: categoryId,
+          published: published
+        });
+
+      if (error) {
+        console.error('❌ Error asignando categoría:', error);
+        throw error;
+      }
+
+      console.log('✅ Categoría asignada exitosamente');
+      return data;
+    } catch (error) {
+      console.error('❌ Error en assignCategoryToStudent:', error);
       throw error;
     }
   }
 
-  // Obtener preguntas de una categoría específica para un estudiante
-  static async getCategoryQuestions(categoryId, studentId) {
+  // Remover asignación de categoría
+  async removeCategoryFromStudent(studentId, categoryId) {
     try {
-      console.log('🔍 Obteniendo preguntas para categoría:', categoryId, 'estudiante:', studentId);
-
-      // Verificar que el estudiante tenga acceso a esta categoría
-      const { data: hasAccess, error: accessError } = await supabase
+      console.log('🗑️ Removiendo categoría de estudiante:', { studentId, categoryId });
+      
+      const { error } = await supabase
         .from('student_categories')
-        .select('id')
+        .delete()
         .eq('student_id', studentId)
-        .eq('category_id', categoryId)
-        .single();
+        .eq('category_id', categoryId);
 
-      if (accessError || !hasAccess) {
-        throw new Error('No tienes acceso a esta categoría');
+      if (error) {
+        console.error('❌ Error removiendo categoría:', error);
+        throw error;
       }
 
-      // Obtener las preguntas de la categoría
-      const { data: questions, error: questionsError } = await supabase
+      console.log('✅ Categoría removida exitosamente');
+      return true;
+    } catch (error) {
+      console.error('❌ Error en removeCategoryFromStudent:', error);
+      throw error;
+    }
+  }
+
+  // Cambiar estado de publicación
+  async togglePublication(studentId, categoryId, published) {
+    try {
+      console.log('🔄 Cambiando estado de publicación:', { studentId, categoryId, published });
+      
+      const { error } = await supabase
+        .from('student_categories')
+        .update({ published })
+        .eq('student_id', studentId)
+        .eq('category_id', categoryId);
+
+      if (error) {
+        console.error('❌ Error cambiando publicación:', error);
+        throw error;
+      }
+
+      console.log('✅ Estado de publicación actualizado');
+      return true;
+    } catch (error) {
+      console.error('❌ Error en togglePublication:', error);
+      throw error;
+    }
+  }
+
+  // Obtener estudiantes asignados a una categoría
+  async getStudentsForCategory(categoryId) {
+    try {
+      console.log('👥 Obteniendo estudiantes para categoría:', categoryId);
+      
+      const { data, error } = await supabase
+        .from('student_categories')
+        .select(`
+          student_id,
+          published,
+          app_users_enriched!student_categories_student_id_fkey (
+            id,
+            email,
+            full_name,
+            raw_user_meta_data
+          )
+        `)
+        .eq('category_id', categoryId);
+
+      if (error) {
+        console.error('❌ Error obteniendo estudiantes:', error);
+        throw error;
+      }
+
+      console.log('✅ Estudiantes obtenidos:', data?.length || 0);
+      return data || [];
+    } catch (error) {
+      console.error('❌ Error en getStudentsForCategory:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Obtiene las preguntas de una categoría para un estudiante
+   */
+  async getCategoryQuestions(categoryId, studentId) {
+    try {
+      console.log('🔍 Obteniendo preguntas de categoría:', categoryId, 'para estudiante:', studentId);
+      
+      const { data, error } = await supabase
         .from('questions')
         .select(`
           id,
           question,
-          type,
           options,
           correct_answer,
-          explanation,
           time_limit,
+          explanation,
           image_url,
-          created_at
+          type
         `)
         .eq('category_id', categoryId)
-        .eq('is_active', true)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: true });
+
+      if (error) {
+        console.error('❌ Error obteniendo preguntas:', error);
+        throw error;
+      }
+
+      console.log('✅ Preguntas obtenidas:', data?.length || 0);
+      
+      // Debug: Log de la primera pregunta para verificar estructura
+      if (data && data.length > 0) {
+        console.log('🔍 Debug primera pregunta:', {
+          id: data[0].id,
+          question: data[0].question?.substring(0, 50) + '...',
+          type: data[0].type,
+          options: data[0].options,
+          correct_answer: data[0].correct_answer,
+          hasOptions: !!data[0].options,
+          optionsType: typeof data[0].options,
+          optionsLength: Array.isArray(data[0].options) ? data[0].options.length : 'N/A'
+        });
+      }
+      
+      return data || [];
+    } catch (error) {
+      console.error('❌ Error en getCategoryQuestions:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Obtiene estadísticas de una categoría para un estudiante
+   */
+  async getCategoryStats(studentId, categoryId) {
+    try {
+      console.log('🔍 Obteniendo estadísticas de categoría:', categoryId, 'para estudiante:', studentId);
+      
+      // Primero obtener las preguntas de la categoría
+      const { data: questions, error: questionsError } = await supabase
+        .from('questions')
+        .select('id')
+        .eq('category_id', categoryId);
 
       if (questionsError) {
         console.error('❌ Error obteniendo preguntas:', questionsError);
         throw questionsError;
       }
 
-      console.log('✅ Preguntas obtenidas:', questions?.length || 0);
-      return questions || [];
-    } catch (error) {
-      console.error('❌ Error en getCategoryQuestions:', error);
-      throw error;
-    }
-  }
+      const questionIds = questions?.map(q => q.id) || [];
+      
+      if (questionIds.length === 0) {
+        return {
+          totalAnswers: 0,
+          correctAnswers: 0,
+          accuracy: 0
+        };
+      }
 
-  // Obtener estadísticas de un estudiante para una categoría específica
-  static async getCategoryStats(studentId, categoryId) {
-    try {
-      console.log('🔍 Obteniendo estadísticas para estudiante:', studentId, 'categoría:', categoryId);
-
-      // Obtener respuestas del estudiante para esta categoría
-      const { data: responses, error: responsesError } = await supabase
-        .from('student_responses')
+      // Luego obtener las respuestas para esas preguntas
+      const { data, error } = await supabase
+        .from('student_answers')
         .select(`
           id,
           is_correct,
-          created_at,
-          questions (
-            id,
-            category_id
-          )
+          answered_at
         `)
         .eq('student_id', studentId)
-        .eq('questions.category_id', categoryId);
+        .in('question_id', questionIds);
 
-      if (responsesError) {
-        console.error('❌ Error obteniendo respuestas:', responsesError);
-        throw responsesError;
+      if (error) {
+        console.error('❌ Error obteniendo estadísticas:', error);
+        throw error;
       }
 
-      const totalAnswers = responses?.length || 0;
-      const correctAnswers = responses?.filter(r => r.is_correct).length || 0;
-      const accuracy = totalAnswers > 0 ? (correctAnswers / totalAnswers) * 100 : 0;
+      const totalAnswers = data?.length || 0;
+      const correctAnswers = data?.filter(a => a.is_correct).length || 0;
+      const accuracy = totalAnswers > 0 ? Math.round((correctAnswers / totalAnswers) * 100) : 0;
 
-      // Obtener la última actividad
-      const lastActivity = responses?.length > 0 
-        ? responses.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0]
-        : null;
-
-      const stats = {
+      console.log('✅ Estadísticas obtenidas:', { totalAnswers, correctAnswers, accuracy });
+      return {
         totalAnswers,
         correctAnswers,
-        incorrectAnswers: totalAnswers - correctAnswers,
-        accuracy: Math.round(accuracy * 100) / 100,
-        lastActivity: lastActivity ? new Date(lastActivity.created_at) : null
+        accuracy
       };
-
-      console.log('✅ Estadísticas obtenidas:', stats);
-      return stats;
     } catch (error) {
       console.error('❌ Error en getCategoryStats:', error);
+      return {
+        totalAnswers: 0,
+        correctAnswers: 0,
+        accuracy: 0
+      };
+    }
+  }
+
+  /**
+   * Guarda las respuestas del estudiante para un quiz
+   */
+  async saveStudentAnswers(studentId, categoryId, answers) {
+    try {
+      console.log('💾 Guardando respuestas del estudiante:', studentId, 'para categoría:', categoryId);
+      
+      // Obtener las respuestas correctas para calcular is_correct
+      const { data: questions, error: questionsError } = await supabase
+        .from('questions')
+        .select('id, correct_answer')
+        .eq('category_id', categoryId);
+
+      if (questionsError) {
+        console.error('❌ Error obteniendo preguntas:', questionsError);
+        throw questionsError;
+      }
+
+      // Crear un mapa de respuestas correctas
+      const correctAnswersMap = {};
+      questions.forEach(q => {
+        correctAnswersMap[q.id] = q.correct_answer;
+      });
+      
+      // Preparar los datos para insertar con is_correct
+      const answersToInsert = Object.entries(answers).map(([questionId, answer]) => {
+        const correctAnswer = correctAnswersMap[questionId];
+        const isCorrect = answer === correctAnswer;
+        
+        return {
+          student_id: studentId,
+          question_id: questionId,
+          answer: answer,
+          is_correct: isCorrect,
+          answered_at: new Date().toISOString()
+        };
+      });
+
+      const { data, error } = await supabase
+        .from('student_answers')
+        .upsert(answersToInsert, { 
+          onConflict: 'student_id,question_id',
+          ignoreDuplicates: false 
+        });
+
+      if (error) {
+        console.error('❌ Error guardando respuestas:', error);
+        throw error;
+      }
+
+      console.log('✅ Respuestas guardadas/actualizadas:', answersToInsert.length);
+      console.log('📝 Detalles de respuestas:', answersToInsert.map(a => ({
+        question_id: a.question_id,
+        answer: a.answer,
+        is_correct: a.is_correct
+      })));
+      return data;
+    } catch (error) {
+      console.error('❌ Error en saveStudentAnswers:', error);
       throw error;
     }
   }
 
-  // Obtener todas las estadísticas del estudiante
-  static async getAllStudentStats(studentId) {
+  /**
+   * Calcula las estadísticas del quiz completado
+   */
+  async calculateQuizStats(studentId, categoryId, answers) {
     try {
-      console.log('🔍 Obteniendo todas las estadísticas para estudiante:', studentId);
+      console.log('📊 Calculando estadísticas del quiz...');
+      
+      // Obtener las preguntas con sus respuestas correctas
+      const { data: questions, error: questionsError } = await supabase
+        .from('questions')
+        .select('id, correct_answer')
+        .eq('category_id', categoryId);
 
-      // Obtener todas las respuestas del estudiante
-      const { data: responses, error: responsesError } = await supabase
-        .from('student_responses')
-        .select(`
-          id,
-          is_correct,
-          created_at,
-          questions (
-            id,
-            category_id,
-            categories (
-              id,
-              name
-            )
-          )
-        `)
-        .eq('student_id', studentId);
-
-      if (responsesError) {
-        console.error('❌ Error obteniendo respuestas:', responsesError);
-        throw responsesError;
+      if (questionsError) {
+        console.error('❌ Error obteniendo preguntas:', questionsError);
+        throw questionsError;
       }
 
-      const totalAnswers = responses?.length || 0;
-      const correctAnswers = responses?.filter(r => r.is_correct).length || 0;
-      const accuracy = totalAnswers > 0 ? (correctAnswers / totalAnswers) * 100 : 0;
+      // Calcular estadísticas
+      let correctAnswers = 0;
+      let totalAnswers = Object.keys(answers).length;
+      let totalQuestions = questions.length;
 
-      // Calcular racha (días consecutivos con actividad)
-      const streak = this.calculateStreak(responses || []);
+      questions.forEach(question => {
+        const studentAnswer = answers[question.id];
+        if (studentAnswer && studentAnswer === question.correct_answer) {
+          correctAnswers++;
+        }
+      });
+
+      const accuracy = totalAnswers > 0 ? Math.round((correctAnswers / totalAnswers) * 100) : 0;
+      const completionRate = totalQuestions > 0 ? Math.round((totalAnswers / totalQuestions) * 100) : 0;
 
       const stats = {
+        totalQuestions,
         totalAnswers,
         correctAnswers,
         incorrectAnswers: totalAnswers - correctAnswers,
-        accuracy: Math.round(accuracy * 100) / 100,
-        streak
+        accuracy,
+        completionRate,
+        score: correctAnswers,
+        maxScore: totalQuestions
       };
 
-      console.log('✅ Estadísticas generales obtenidas:', stats);
+      console.log('✅ Estadísticas calculadas:', stats);
       return stats;
     } catch (error) {
-      console.error('❌ Error en getAllStudentStats:', error);
-      throw error;
+      console.error('❌ Error en calculateQuizStats:', error);
+      return {
+        totalQuestions: 0,
+        totalAnswers: 0,
+        correctAnswers: 0,
+        incorrectAnswers: 0,
+        accuracy: 0,
+        completionRate: 0,
+        score: 0,
+        maxScore: 0
+      };
     }
-  }
-
-  // Calcular racha de días consecutivos
-  static calculateStreak(responses) {
-    if (!responses || responses.length === 0) return 0;
-
-    // Agrupar respuestas por día
-    const responsesByDay = {};
-    responses.forEach(response => {
-      const date = new Date(response.created_at).toDateString();
-      if (!responsesByDay[date]) {
-        responsesByDay[date] = [];
-      }
-      responsesByDay[date].push(response);
-    });
-
-    // Ordenar fechas
-    const dates = Object.keys(responsesByDay).sort((a, b) => new Date(b) - new Date(a));
-    
-    let streak = 0;
-    const today = new Date().toDateString();
-    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toDateString();
-
-    // Si hay actividad hoy o ayer, empezar a contar
-    if (dates.includes(today) || dates.includes(yesterday)) {
-      streak = 1;
-      
-      // Contar días consecutivos hacia atrás
-      for (let i = 1; i < dates.length; i++) {
-        const currentDate = new Date(dates[i]);
-        const previousDate = new Date(dates[i - 1]);
-        const diffDays = (previousDate - currentDate) / (1000 * 60 * 60 * 24);
-        
-        if (diffDays === 1) {
-          streak++;
-        } else {
-          break;
-        }
-      }
-    }
-
-    return streak;
   }
 }
 
-export default StudentCategoriesService;
+const studentCategoriesService = new StudentCategoriesService();
+export default studentCategoriesService;

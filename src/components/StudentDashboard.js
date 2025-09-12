@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { AppConstants } from '../utils/constants';
 import CustomButton from './CustomButton';
 import StudentStatsCard from './StudentStatsCard';
@@ -29,14 +29,13 @@ const StudentDashboard = ({
   studentStats = {}, 
   onLogout, 
   onStartQuiz,
-  onViewCategoryQuestions 
+  onNavigate
 }) => {
-  const categoriesList = Array.isArray(categories) ? categories : [];
+  const categoriesList = useMemo(() => Array.isArray(categories) ? categories : [], [categories]);
   
   // Estados para las nuevas funcionalidades
   const [categoryPublicationStatus, setCategoryPublicationStatus] = useState({});
   const [categoryStats, setCategoryStats] = useState({});
-  const [loadingStats, setLoadingStats] = useState(true);
   const [recentActivity, setRecentActivity] = useState([]);
   const [loadingActivity, setLoadingActivity] = useState(true);
   const categoriesCount = categoriesList.length;
@@ -47,18 +46,43 @@ const StudentDashboard = ({
       if (!user?.id) return;
       
       try {
-        setLoadingStats(true);
         const [publicationStatus, stats] = await Promise.all([
           StatisticsService.getCategoryPublicationStatus(user.id),
-          StatisticsService.getCategoryStatsDetailed(user.id)
+          StatisticsService.getStudentStatistics(user.id)
         ]);
         
-        setCategoryPublicationStatus(publicationStatus);
-        setCategoryStats(stats);
+        // Transformar publicationStatus a un objeto por category_id
+        const publicationStatusMap = {};
+        if (publicationStatus) {
+          publicationStatus.forEach(item => {
+            publicationStatusMap[item.category_id] = item.published;
+          });
+        }
+        
+        // Transformar stats a un objeto por category_id
+        const statsMap = {};
+        if (stats && stats.categoryStats) {
+          // Necesitamos mapear por nombre de categoría a ID
+          // Por ahora, usaremos las estadísticas generales para todas las categorías
+          Object.keys(stats.categoryStats).forEach(categoryName => {
+            const categoryStat = stats.categoryStats[categoryName];
+            // Buscar la categoría por nombre en la lista de categorías
+            const category = categoriesList.find(cat => cat.name === categoryName);
+            if (category) {
+              statsMap[category.id] = {
+                totalAnswers: categoryStat.total,
+                correctAnswers: categoryStat.correct,
+                successPercentage: categoryStat.total > 0 ? Math.round((categoryStat.correct / categoryStat.total) * 100) : 0,
+                questionCount: 0 // Se puede calcular si es necesario
+              };
+            }
+          });
+        }
+        
+        setCategoryPublicationStatus(publicationStatusMap);
+        setCategoryStats(statsMap);
       } catch (error) {
         console.error('❌ Error cargando datos de categorías:', error);
-      } finally {
-        setLoadingStats(false);
       }
     };
 
@@ -237,7 +261,7 @@ const StudentDashboard = ({
             marginBottom: '24px',
             color: safeColor('textPrimary')
           }}>
-            Categorías Disponibles
+            Mis Categorías
           </h3>
           
           {isLoadingCategories ? (
@@ -254,12 +278,18 @@ const StudentDashboard = ({
           ) : categoriesCount === 0 ? (
             <div style={{
               display: 'flex',
+              flexDirection: 'column',
               justifyContent: 'center',
               alignItems: 'center',
-              padding: '40px'
+              padding: '40px',
+              textAlign: 'center'
             }}>
-              <div style={{ fontSize: '18px', color: safeColor('textMuted') }}>
-                No hay categorías disponibles
+              <div style={{ fontSize: '48px', marginBottom: '16px' }}>📚</div>
+              <div style={{ fontSize: '18px', color: safeColor('textMuted'), marginBottom: '8px' }}>
+                No tienes categorías publicadas
+              </div>
+              <div style={{ fontSize: '14px', color: safeColor('textMuted'), opacity: 0.7 }}>
+                Las categorías aparecerán aquí cuando tu administrador las publique
               </div>
             </div>
           ) : (
@@ -286,8 +316,13 @@ const StudentDashboard = ({
                       completed: stats.totalAnswers,
                       lastScore: isPublished && stats.totalAnswers > 0 ? stats.successPercentage : null
                     }}
-                    onStartQuiz={() => onStartQuiz(category.id)}
-                    onViewQuestions={() => onViewCategoryQuestions(category)}
+                    onStartQuiz={() => {
+                      if (onNavigate) {
+                        onNavigate('category-questions', { category });
+                      } else if (onStartQuiz) {
+                        onStartQuiz(category.id);
+                      }
+                    }}
                   />
                 );
               })}

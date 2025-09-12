@@ -19,7 +19,7 @@ const safeColor = (colorName) => {
 };
 
 const CategoryQuizCard = ({ category, onTap, onStartQuiz, onViewQuestions }) => {
-  const [isPressed, setIsPressed] = useState(false);
+  // const [isPressed, setIsPressed] = useState(false);
 
   // Lista de colores para asignar por categoría
   const categoryColors = [
