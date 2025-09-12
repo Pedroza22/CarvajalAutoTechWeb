@@ -76,8 +76,11 @@ const AdminCategoriesPage = ({ onNavigate }) => {
     if (window.confirm(`¿Estás seguro de que deseas eliminar la categoría "${category.name}"?`)) {
       try {
         await CategoriesService.deleteCategory(category.id);
-        await loadCategories();
         alert('Categoría eliminada exitosamente');
+        // Recargar categorías sin afectar el flujo principal
+        loadCategories().catch(err => {
+          console.error('❌ Error recargando categorías:', err);
+        });
       } catch (error) {
         console.error('❌ Error eliminando categoría:', error);
         alert('Error al eliminar la categoría');
