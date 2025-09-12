@@ -19,8 +19,13 @@ class CategoriesService {
       console.log('✅ Categorías obtenidas:', data?.length || 0);
       return data || [];
     } catch (error) {
-      console.error('❌ Error en getAllCategories:', error);
-      throw error;
+      if (error) {
+        console.error('❌ Error en getAllCategories:', error);
+        throw error;
+      } else {
+        console.error('❌ Error desconocido en getAllCategories');
+        throw new Error('Error desconocido al obtener categorías');
+      }
     }
   }
 
@@ -43,8 +48,13 @@ class CategoriesService {
       console.log('✅ Categorías activas obtenidas:', data?.length || 0);
       return data || [];
     } catch (error) {
-      console.error('❌ Error en getActiveCategories:', error);
-      throw error;
+      if (error) {
+        console.error('❌ Error en getActiveCategories:', error);
+        throw error;
+      } else {
+        console.error('❌ Error desconocido en getActiveCategories');
+        throw new Error('Error desconocido al obtener categorías activas');
+      }
     }
   }
 
@@ -75,8 +85,13 @@ class CategoriesService {
       console.log('✅ Categoría creada:', data);
       return data;
     } catch (error) {
-      console.error('❌ Error en createCategory:', error);
-      throw error;
+      if (error) {
+        console.error('❌ Error en createCategory:', error);
+        throw error;
+      } else {
+        console.error('❌ Error desconocido en createCategory');
+        throw new Error('Error desconocido al crear categoría');
+      }
     }
   }
 
@@ -105,8 +120,13 @@ class CategoriesService {
       console.log('✅ Categoría actualizada:', data);
       return data;
     } catch (error) {
-      console.error('❌ Error en updateCategory:', error);
-      throw error;
+      if (error) {
+        console.error('❌ Error en updateCategory:', error);
+        throw error;
+      } else {
+        console.error('❌ Error desconocido en updateCategory');
+        throw new Error('Error desconocido al actualizar categoría');
+      }
     }
   }
 
@@ -128,8 +148,13 @@ class CategoriesService {
       console.log('✅ Categoría eliminada');
       return true;
     } catch (error) {
-      console.error('❌ Error en deleteCategory:', error);
-      throw error;
+      if (error) {
+        console.error('❌ Error en deleteCategory:', error);
+        throw error;
+      } else {
+        console.error('❌ Error desconocido en deleteCategory');
+        throw new Error('Error desconocido al eliminar categoría');
+      }
     }
   }
 
