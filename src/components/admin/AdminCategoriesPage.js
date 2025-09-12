@@ -190,6 +190,17 @@ const AdminCategoriesPage = ({ onNavigate }) => {
     }
   };
 
+  // Función para obtener iniciales del estudiante
+  const getStudentInitials = (student) => {
+    const displayName = StudentsService.getDisplayName(student);
+    if (!displayName) return '??';
+    
+    const parts = displayName.split(' ').filter(part => part.length > 0);
+    if (parts.length === 0) return '??';
+    if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  };
+
   const handleSubmitCategory = async (e) => {
     e.preventDefault();
     
@@ -728,14 +739,40 @@ const AdminCategoriesPage = ({ onNavigate }) => {
               marginBottom: '20px',
               maxHeight: '400px'
             }}>
-              {students
+              {students.length === 0 ? (
+                <div style={{
+                  textAlign: 'center',
+                  padding: '40px',
+                  color: safeColor('textMuted')
+                }}>
+                  <div style={{ fontSize: '48px', marginBottom: '16px' }}>👥</div>
+                  <p>No hay estudiantes disponibles</p>
+                </div>
+              ) : students
                 .filter(student => {
                   const searchLower = studentSearchTerm.toLowerCase();
                   const name = StudentsService.getDisplayName(student).toLowerCase();
                   const email = student.email?.toLowerCase() || '';
                   return name.includes(searchLower) || email.includes(searchLower);
                 })
-                .map(student => {
+                .length === 0 ? (
+                <div style={{
+                  textAlign: 'center',
+                  padding: '40px',
+                  color: safeColor('textMuted')
+                }}>
+                  <div style={{ fontSize: '48px', marginBottom: '16px' }}>🔍</div>
+                  <p>No se encontraron estudiantes con ese criterio de búsqueda</p>
+                </div>
+              ) : (
+                students
+                  .filter(student => {
+                    const searchLower = studentSearchTerm.toLowerCase();
+                    const name = StudentsService.getDisplayName(student).toLowerCase();
+                    const email = student.email?.toLowerCase() || '';
+                    return name.includes(searchLower) || email.includes(searchLower);
+                  })
+                  .map(student => {
                   const isSelected = selectedStudents.includes(student.id);
                   const displayName = StudentsService.getDisplayName(student);
                   
@@ -745,43 +782,100 @@ const AdminCategoriesPage = ({ onNavigate }) => {
                       style={{
                         display: 'flex',
                         alignItems: 'center',
+                        gap: '12px',
                         padding: '12px',
-                        border: `1px solid ${safeColor('border')}`,
-                        borderRadius: '8px',
+                        border: `1px solid ${isSelected ? safeColor('primary') : safeColor('border')}`,
+                        borderRadius: '12px',
                         marginBottom: '8px',
-                        background: isSelected ? safeColor('primary') + '20' : 'transparent',
-                        cursor: 'pointer'
+                        background: isSelected ? safeColor('primary') + '15' : safeColor('cardBg'),
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
                       }}
                       onClick={() => handleStudentToggle(student.id)}
+                      onMouseEnter={(e) => {
+                        if (!isSelected) {
+                          e.target.style.background = safeColor('primary') + '08';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!isSelected) {
+                          e.target.style.background = safeColor('cardBg');
+                        }
+                      }}
                     >
+                      {/* Checkbox */}
                       <input
                         type="checkbox"
                         checked={isSelected}
                         onChange={() => handleStudentToggle(student.id)}
                         style={{
-                          marginRight: '12px',
-                          transform: 'scale(1.2)'
+                          transform: 'scale(1.3)',
+                          accentColor: safeColor('primary')
                         }}
                       />
-                      <div style={{ flex: 1 }}>
-                        <div style={{
+                      
+                      {/* Avatar */}
+                      <div style={{
+                        width: '40px',
+                        height: '40px',
+                        borderRadius: '50%',
+                        background: isSelected ? safeColor('primary') : safeColor('border'),
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '0.9rem',
+                        fontWeight: '600',
+                        color: isSelected ? 'white' : safeColor('textMuted'),
+                        flexShrink: 0
+                      }}>
+                        {getStudentInitials(student)}
+                      </div>
+
+                      {/* Información del estudiante */}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <h4 style={{
                           fontSize: '1rem',
                           fontWeight: '600',
                           color: safeColor('textPrimary'),
-                          marginBottom: '4px'
+                          margin: '0 0 4px 0',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap'
                         }}>
                           {displayName}
-                        </div>
-                        <div style={{
-                          fontSize: '0.9rem',
-                          color: safeColor('textMuted')
+                        </h4>
+                        <p style={{
+                          fontSize: '0.85rem',
+                          color: safeColor('textMuted'),
+                          margin: '0 0 2px 0',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap'
                         }}>
                           {student.email}
-                        </div>
+                        </p>
+                        <p style={{
+                          fontSize: '0.75rem',
+                          color: safeColor('textMuted'),
+                          margin: 0
+                        }}>
+                          Estudiante registrado
+                        </p>
                       </div>
+
+                      {/* Indicador de selección */}
+                      {isSelected && (
+                        <div style={{
+                          color: safeColor('primary'),
+                          fontSize: '1.2rem'
+                        }}>
+                          ✓
+                        </div>
+                      )}
                     </div>
                   );
-                })}
+                })
+              )}
             </div>
 
             {/* Botones */}
