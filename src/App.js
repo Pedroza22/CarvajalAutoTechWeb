@@ -193,7 +193,7 @@ function App() {
           />
         )}
         {currentPage === 'admin-create-question' && (
-          <AdminCreateQuestionPage onSaved={() => setCurrentPage('admin-questions')} />
+          <AdminCreateQuestionPage onNavigate={(page) => setCurrentPage(page)} />
         )}
         {currentPage === 'admin-connection-test' && (
           <SupabaseConnectionTest />
