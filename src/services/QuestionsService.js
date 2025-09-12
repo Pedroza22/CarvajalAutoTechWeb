@@ -67,17 +67,38 @@ class QuestionsService {
       // Obtener el usuario actual
       const { data: { user } } = await supabase.auth.getUser();
       
+      console.log('🔍 Datos de la pregunta:', {
+        categoryId: questionData.categoryId,
+        type: questionData.type,
+        question: questionData.question,
+        options: questionData.options,
+        correctAnswer: questionData.correctAnswer,
+        timeLimit: questionData.timeLimit,
+        imageUrl: questionData.imageUrl,
+        explanation: questionData.explanation,
+        userId: user?.id
+      });
+      
+      // Preparar datos para insertar
+      const insertData = {
+        category_id: questionData.categoryId,
+        type: questionData.type,
+        question: questionData.question,
+        options: questionData.options,
+        correct_answer: questionData.correctAnswer,
+        time_limit: questionData.timeLimit,
+        explanation: questionData.explanation,
+        created_by: user?.id
+      };
+
+      // Solo agregar image_url si existe
+      if (questionData.imageUrl) {
+        insertData.image_url = questionData.imageUrl;
+      }
+
       const { data, error } = await supabase
         .from('questions')
-        .insert({
-          quiz_id: null, // No requerimos quiz
-          question_type: questionData.type,
-          question_text: questionData.question,
-          points: questionData.points || 1.00,
-          order_index: questionData.orderIndex || 1,
-          explanation: questionData.explanation,
-          media_url: questionData.imageUrl
-        })
+        .insert(insertData)
         .select()
         .single();
 

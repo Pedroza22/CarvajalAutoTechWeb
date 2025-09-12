@@ -155,7 +155,7 @@ const AdminCreateQuestionPage = ({ onNavigate, questionData = null }) => {
     try {
       setLoading(true);
       
-      let imageUrl = formData.imageUrl.trim() || null;
+      let imageUrl = null;
       
       // Si hay un archivo seleccionado, subirlo primero
       if (selectedFile) {
@@ -634,33 +634,6 @@ const AdminCreateQuestionPage = ({ onNavigate, questionData = null }) => {
             
             {/* O URL como alternativa */}
             <div style={{ marginTop: '12px' }}>
-              <label style={{
-                display: 'block',
-                fontSize: '0.9rem',
-                fontWeight: '500',
-                color: safeColor('textMuted'),
-                marginBottom: '4px'
-              }}>
-                O ingresa una URL:
-              </label>
-              <input
-                type="url"
-                value={formData.imageUrl}
-                onChange={(e) => {
-                  handleInputChange('imageUrl', e.target.value);
-                  if (e.target.value) setSelectedFile(null); // Limpiar archivo si hay URL
-                }}
-                placeholder="https://ejemplo.com/imagen.jpg"
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  borderRadius: '6px',
-                  border: `1px solid ${safeColor('border')}`,
-                  background: safeColor('dark'),
-                  color: safeColor('textPrimary'),
-                  fontSize: '0.9rem'
-                }}
-              />
             </div>
           </div>
 
