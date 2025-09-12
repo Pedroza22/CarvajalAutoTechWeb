@@ -642,7 +642,7 @@ class StatisticsService {
     try {
       const { data, error } = await supabase
         .from('stats_trends')
-        .select('day, count')
+        .select('day, answers')
         .order('day', { ascending: true });
 
       // Si la vista no existe, retornar datos vacíos sin error
@@ -674,7 +674,10 @@ class StatisticsService {
         ];
       }
 
-      return data;
+      return data.map(item => ({
+        day: item.day,
+        count: item.answers || 0
+      }));
     } catch (error) {
       console.error('Error obteniendo actividad semanal:', error);
       // Retornar datos de ejemplo si hay error
@@ -697,7 +700,7 @@ class StatisticsService {
     try {
       const { data, error } = await supabase
         .from('stats_trends')
-        .select('count');
+        .select('answers');
 
       // Si la vista no existe, retornar datos vacíos sin error
       if (error && error.code === '42P01') {
@@ -719,7 +722,7 @@ class StatisticsService {
         };
       }
 
-      const counts = data.map(item => item.count || 0);
+      const counts = data.map(item => item.answers || 0);
       const total = counts.reduce((sum, count) => sum + count, 0);
       const average = counts.length > 0 ? Math.round(total / counts.length) : 0;
       const maximum = counts.length > 0 ? Math.max(...counts) : 0;

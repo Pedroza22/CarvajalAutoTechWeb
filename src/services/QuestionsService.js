@@ -77,7 +77,7 @@ class QuestionsService {
             title: `Quiz para: ${questionData.question.substring(0, 50)}...`,
             description: 'Quiz generado automáticamente',
             status: 'draft',
-            created_by: user?.id || 'system'
+            created_by: user?.id
           })
           .select()
           .single();
