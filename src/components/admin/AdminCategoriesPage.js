@@ -106,10 +106,16 @@ const AdminCategoriesPage = ({ onNavigate }) => {
       }
       
       setShowCreateModal(false);
-      await loadCategories();
+      // Recargar categorías sin afectar el flujo principal
+      loadCategories().catch(err => {
+        console.error('❌ Error recargando categorías:', err);
+      });
     } catch (error) {
       console.error('❌ Error guardando categoría:', error);
       alert('Error al guardar la categoría');
+    } finally {
+      setEditingCategory(null);
+      setFormData({ name: '', description: '', icon: '📂' });
     }
   };
 
