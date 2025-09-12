@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { getColor } from '../../utils/constants';
 import QuestionsService from '../../services/QuestionsService';
 import CategoriesService from '../../services/CategoriesService';
-import { supabase } from '../../services/supabase';
+import supabase from '../../config/supabase';
 
 const AdminCreateQuestionPage = ({ onNavigate, questionData = null }) => {
   const [loading, setLoading] = useState(false);
@@ -90,14 +90,14 @@ const AdminCreateQuestionPage = ({ onNavigate, questionData = null }) => {
       const filePath = `questions/${fileName}`;
       
       // Subir archivo a Supabase Storage
-      const { data, error } = await supabase.storage
+      const { data, error } = await supabase.client.storage
         .from('images')
         .upload(filePath, file);
       
       if (error) throw error;
       
       // Obtener URL pública
-      const { data: { publicUrl } } = supabase.storage
+      const { data: { publicUrl } } = supabase.client.storage
         .from('images')
         .getPublicUrl(filePath);
       

@@ -636,37 +636,45 @@ class StatisticsService {
   }
 
   /**
-   * Obtiene actividad semanal por día
+   * Obtiene actividad semanal por día usando la vista stats_trends
    */
   async getWeeklyActivity() {
     try {
-      const today = new Date();
-      const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
-      
       const { data, error } = await supabase
-        .from('quiz_attempts')
-        .select('created_at')
-        .gte('created_at', weekAgo.toISOString())
-        .lte('created_at', today.toISOString());
+        .from('stats_trends')
+        .select('day, count')
+        .order('day', { ascending: true });
+
+      // Si la vista no existe, retornar datos vacíos sin error
+      if (error && error.code === '42P01') {
+        console.warn('⚠️ Vista stats_trends no existe, usando datos vacíos');
+        return [
+          { day: 'L', count: 0 },
+          { day: 'M', count: 0 },
+          { day: 'X', count: 0 },
+          { day: 'J', count: 0 },
+          { day: 'V', count: 0 },
+          { day: 'S', count: 0 },
+          { day: 'D', count: 0 }
+        ];
+      }
 
       if (error) throw error;
 
-      // Agrupar por día de la semana
-      const dayCounts = {};
-      const dayNames = ['D', 'L', 'M', 'X', 'J', 'V', 'S'];
-      
-      data?.forEach(attempt => {
-        const date = new Date(attempt.created_at);
-        const dayOfWeek = date.getDay(); // 0 = Domingo, 1 = Lunes, etc.
-        const dayName = dayNames[dayOfWeek];
-        dayCounts[dayName] = (dayCounts[dayName] || 0) + 1;
-      });
+      // Si no hay datos, retornar array vacío
+      if (!data || data.length === 0) {
+        return [
+          { day: 'L', count: 0 },
+          { day: 'M', count: 0 },
+          { day: 'X', count: 0 },
+          { day: 'J', count: 0 },
+          { day: 'V', count: 0 },
+          { day: 'S', count: 0 },
+          { day: 'D', count: 0 }
+        ];
+      }
 
-      // Crear array con todos los días de la semana
-      return dayNames.map(day => ({
-        day,
-        count: dayCounts[day] || 0
-      }));
+      return data;
     } catch (error) {
       console.error('Error obteniendo actividad semanal:', error);
       // Retornar datos de ejemplo si hay error
@@ -683,31 +691,38 @@ class StatisticsService {
   }
 
   /**
-   * Obtiene estadísticas resumidas de la semana
+   * Obtiene estadísticas resumidas de la semana usando la vista stats_trends
    */
   async getWeeklyStats() {
     try {
-      const today = new Date();
-      const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
-      
       const { data, error } = await supabase
-        .from('quiz_attempts')
-        .select('created_at')
-        .gte('created_at', weekAgo.toISOString())
-        .lte('created_at', today.toISOString());
+        .from('stats_trends')
+        .select('count');
+
+      // Si la vista no existe, retornar datos vacíos sin error
+      if (error && error.code === '42P01') {
+        console.warn('⚠️ Vista stats_trends no existe, usando datos vacíos');
+        return {
+          total: 0,
+          average: 0,
+          maximum: 0
+        };
+      }
 
       if (error) throw error;
 
-      const total = data?.length || 0;
-      const average = total > 0 ? Math.round(total / 7) : 0;
-      const maximum = total > 0 ? Math.max(...Array.from({length: 7}, (_, i) => {
-        const dayStart = new Date(weekAgo.getTime() + i * 24 * 60 * 60 * 1000);
-        const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
-        return data?.filter(attempt => {
-          const attemptDate = new Date(attempt.created_at);
-          return attemptDate >= dayStart && attemptDate < dayEnd;
-        }).length || 0;
-      })) : 0;
+      if (!data || data.length === 0) {
+        return {
+          total: 0,
+          average: 0,
+          maximum: 0
+        };
+      }
+
+      const counts = data.map(item => item.count || 0);
+      const total = counts.reduce((sum, count) => sum + count, 0);
+      const average = counts.length > 0 ? Math.round(total / counts.length) : 0;
+      const maximum = counts.length > 0 ? Math.max(...counts) : 0;
 
       return {
         total,

@@ -86,7 +86,7 @@ const AdminCategoriesPage = ({ onNavigate }) => {
           resetForm();
           console.log('✅ Categoría actualizada');
         } else {
-          console.error('❌', res.error);
+          console.error('❌ Error:', res.error || 'Error desconocido');
         }
       } else {
         // Crear nueva categoría
@@ -99,7 +99,7 @@ const AdminCategoriesPage = ({ onNavigate }) => {
           resetForm();
           console.log('✅ Categoría creada');
         } else {
-          console.error('❌', res.error);
+          console.error('❌ Error:', res.error || 'Error desconocido');
         }
       }
     } catch (error) {

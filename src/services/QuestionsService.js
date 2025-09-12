@@ -70,14 +70,14 @@ class QuestionsService {
         .from('questions')
         .insert({
           category_id: questionData.categoryId,
-          type: questionData.type,
-          question: questionData.question,
-          options: questionData.options,
-          correct_answer: questionData.correctAnswer,
-          time_limit: questionData.timeLimit,
-          image_url: questionData.imageUrl,
+          question_type: questionData.type,
+          question_text: questionData.question,
+          points: questionData.points || 1.00,
+          order_index: questionData.orderIndex || 1,
           explanation: questionData.explanation,
-          created_by: user?.id || questionData.createdBy || 'system'
+          media_url: questionData.imageUrl,
+          is_required: questionData.isRequired !== false,
+          metadata: questionData.metadata || {}
         })
         .select()
         .single();
