@@ -55,6 +55,30 @@ const AdminQuestionsListPage = ({ onNavigate }) => {
     }
   };
 
+  const handleEditQuestion = (question) => {
+    console.log('🔍 Editando pregunta:', question);
+    onNavigate('admin-create-question', question);
+  };
+
+  const handleDeleteQuestion = async (questionId) => {
+    if (!confirm('¿Estás seguro de que quieres eliminar esta pregunta?')) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      await QuestionsService.deleteQuestion(questionId);
+      console.log('✅ Pregunta eliminada exitosamente');
+      alert('Pregunta eliminada exitosamente');
+      await loadQuestions(); // Recargar la lista
+    } catch (error) {
+      console.error('❌ Error eliminando pregunta:', error);
+      alert('Error al eliminar la pregunta: ' + (error.message || 'Error desconocido'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const filteredQuestions = questions.filter(question => 
     question.question.toLowerCase().includes(searchText.toLowerCase())
   );
@@ -212,6 +236,8 @@ const AdminQuestionsListPage = ({ onNavigate }) => {
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     marginBottom: '12px',
+    gap: '12px',
+    minWidth: 0
   };
 
   const questionTextStyle = {
@@ -226,26 +252,38 @@ const AdminQuestionsListPage = ({ onNavigate }) => {
   const questionMetaStyle = {
     display: 'flex',
     flexDirection: 'column',
-    gap: '8px',
+    gap: '6px',
     alignItems: 'flex-end',
+    minWidth: '0',
+    flexShrink: 0
   };
 
   const categoryTagStyle = {
     background: AppTheme.primaryRed,
     color: AppTheme.white,
-    padding: '4px 12px',
-    borderRadius: '20px',
-    fontSize: '12px',
+    padding: '3px 8px',
+    borderRadius: '12px',
+    fontSize: '10px',
     fontWeight: '600',
+    maxWidth: '120px',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+    flexShrink: 0
   };
 
   const typeTagStyle = {
     background: AppTheme.info,
     color: AppTheme.white,
-    padding: '4px 12px',
-    borderRadius: '20px',
-    fontSize: '12px',
+    padding: '3px 8px',
+    borderRadius: '12px',
+    fontSize: '10px',
     fontWeight: '600',
+    maxWidth: '100px',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+    flexShrink: 0
   };
 
   const dateStyle = {
@@ -390,6 +428,59 @@ const AdminQuestionsListPage = ({ onNavigate }) => {
                   </div>
                 </div>
               )}
+
+              {/* Botones de acción */}
+              <div style={{
+                display: 'flex',
+                gap: '8px',
+                marginTop: '16px',
+                justifyContent: 'flex-end'
+              }}>
+                <button
+                  onClick={() => handleEditQuestion(question)}
+                  style={{
+                    background: AppTheme.primary,
+                    color: AppTheme.white,
+                    border: 'none',
+                    borderRadius: AppTheme.borderRadius.small,
+                    padding: '8px 16px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    transition: 'background-color 0.2s'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.background = AppTheme.primaryDark;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.background = AppTheme.primary;
+                  }}
+                >
+                  ✏️ Editar
+                </button>
+                <button
+                  onClick={() => handleDeleteQuestion(question.id)}
+                  style={{
+                    background: AppTheme.danger,
+                    color: AppTheme.white,
+                    border: 'none',
+                    borderRadius: AppTheme.borderRadius.small,
+                    padding: '8px 16px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    transition: 'background-color 0.2s'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.background = AppTheme.dangerDark;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.background = AppTheme.danger;
+                  }}
+                >
+                  🗑️ Eliminar
+                </button>
+              </div>
             </div>
           ))}
         </div>

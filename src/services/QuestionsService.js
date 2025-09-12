@@ -127,18 +127,32 @@ class QuestionsService {
     try {
       console.log('🔍 Actualizando pregunta:', questionId);
       
+      // Mapear tipos de pregunta como en Flutter
+      const typeMapping = {
+        'multiple_choice': 'multipleChoice',
+        'true_false': 'trueFalse', 
+        'free_text': 'freeText'
+      };
+
+      // Preparar datos para actualizar (alineado con Flutter)
+      const updateData = {
+        category_id: questionData.categoryId,
+        type: typeMapping[questionData.type] || questionData.type, // Usar mapeo de Flutter
+        question: questionData.question, // Campo 'question' como en Flutter
+        options: questionData.options,
+        correct_answer: questionData.correctAnswer,
+        time_limit: questionData.timeLimit,
+        explanation: questionData.explanation
+      };
+
+      // Solo agregar imageUrl si existe (como en Flutter)
+      if (questionData.imageUrl) {
+        updateData.imageUrl = questionData.imageUrl;
+      }
+      
       const { data, error } = await supabase
         .from('questions')
-        .update({
-          category_id: questionData.categoryId,
-          type: questionData.type,
-          question: questionData.question,
-          options: questionData.options,
-          correct_answer: questionData.correctAnswer,
-          time_limit: questionData.timeLimit,
-          image_url: questionData.imageUrl,
-          explanation: questionData.explanation
-        })
+        .update(updateData)
         .eq('id', questionId)
         .select()
         .single();
