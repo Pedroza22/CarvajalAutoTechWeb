@@ -41,7 +41,9 @@ function App() {
   // Forzar que los admins aterricen en el home del panel
   useEffect(() => {
     if (user && userRole === 'admin') {
-      if (currentPage === 'admin-auth' || !String(currentPage).startsWith('admin-')) {
+      // Solo redirigir desde páginas de autenticación o páginas no admin
+      const adminPages = ['admin-home', 'admin-stats', 'admin-categories', 'admin-questions', 'students-list', 'student-detail', 'categories', 'questions', 'statistics'];
+      if (currentPage === 'admin-auth' || (!adminPages.includes(currentPage) && !String(currentPage).startsWith('admin-'))) {
         console.log('Redirigiendo admin a admin-home desde:', currentPage);
         setCurrentPage('admin-home');
       }

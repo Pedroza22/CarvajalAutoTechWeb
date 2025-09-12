@@ -248,94 +248,84 @@ const AdminStatisticsPage = ({ onNavigate }) => {
             {statistics.topStudents.map((student, index) => (
               <div key={index} style={{
                 display: 'flex',
-                alignItems: 'center',
-                gap: '16px',
-                padding: '16px 0',
-                borderBottom: index < statistics.topStudents.length - 1 ? `1px solid ${safeColor('border')}33` : 'none'
+                alignItems: 'flex-start',
+                gap: '10px',
+                padding: '10px 0',
+                borderBottom: index < statistics.topStudents.length - 1 ? `1px solid ${safeColor('border')}33` : 'none',
+                minHeight: '60px'
               }}>
                 {/* Ranking */}
                 <div style={{
-                  width: '32px',
-                  height: '32px',
+                  width: '28px',
+                  height: '28px',
                   borderRadius: '50%',
                   background: index === 0 ? '#FFD700' : index === 1 ? '#C0C0C0' : index === 2 ? '#CD7F32' : safeColor('border'),
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  fontSize: '0.9rem',
+                  fontSize: '0.8rem',
                   fontWeight: '600',
-                  color: index < 3 ? 'white' : safeColor('textMuted')
+                  color: index < 3 ? 'white' : safeColor('textMuted'),
+                  flexShrink: 0
                 }}>
                   {index === 0 ? '🏆' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index + 1}`}
                 </div>
 
                 {/* Avatar */}
                 <div style={{
-                  width: '48px',
-                  height: '48px',
+                  width: '36px',
+                  height: '36px',
                   borderRadius: '50%',
                   background: safeColor('primary'),
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  fontSize: '1.1rem',
+                  fontSize: '0.8rem',
                   fontWeight: '600',
-                  color: 'white'
+                  color: 'white',
+                  flexShrink: 0
                 }}>
                   {student.name ? student.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : '??'}
                 </div>
 
                 {/* Información del estudiante */}
-                <div style={{ flex: 1 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
                   <h4 style={{
-                    fontSize: '1rem',
+                    fontSize: '0.9rem',
                     fontWeight: '600',
                     color: safeColor('textPrimary'),
-                    margin: '0 0 4px 0'
+                    margin: '0 0 2px 0',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap'
                   }}>
                     {student.name || 'Sin nombre'}
                   </h4>
                   <p style={{
-                    fontSize: '0.8rem',
+                    fontSize: '0.75rem',
                     color: safeColor('textMuted'),
-                    margin: '0 0 4px 0'
+                    margin: '0 0 2px 0',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap'
                   }}>
                     {student.email || 'Sin email'}
                   </p>
                   <p style={{
-                    fontSize: '0.8rem',
+                    fontSize: '0.75rem',
                     color: safeColor('textMuted'),
-                    margin: 0
+                    margin: '0 0 2px 0'
                   }}>
                     {student.questionsAnswered || 0} preguntas respondidas
                   </p>
-                </div>
-
-                {/* Porcentaje y estrellas */}
-                <div style={{
-                  textAlign: 'right'
-                }}>
-                  <div style={{
-                    fontSize: '1.1rem',
+                  <p style={{
+                    fontSize: '0.65rem',
                     fontWeight: '600',
                     color: safeColor('error'),
-                    marginBottom: '4px'
+                    margin: 0
                   }}>
                     {student.accuracy || 0}%
-                  </div>
-                  <div style={{
-                    display: 'flex',
-                    gap: '2px'
-                  }}>
-                    {[1, 2, 3, 4, 5].map(star => (
-                      <span key={star} style={{
-                        color: (student.accuracy || 0) >= star * 20 ? '#FFD700' : safeColor('border'),
-                        fontSize: '0.8rem'
-                      }}>
-                        ⭐
-                      </span>
-                    ))}
-                  </div>
+                  </p>
                 </div>
               </div>
             ))}

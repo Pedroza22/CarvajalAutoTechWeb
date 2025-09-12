@@ -173,22 +173,50 @@ const AdminStudentsListPage = ({ onNavigate }) => {
         alignItems: 'center',
         marginBottom: '24px'
       }}>
-        <div>
-          <h1 style={{
-            fontSize: '1.8rem',
-            fontWeight: '700',
-            color: safeColor('textPrimary'),
-            margin: '0 0 8px 0'
-          }}>
-            Lista de Estudiantes
-          </h1>
-          <p style={{
-            fontSize: '1rem',
-            color: safeColor('textMuted'),
-            margin: 0
-          }}>
-            Gestiona y supervisa el progreso de los estudiantes
-          </p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <button
+            onClick={() => onNavigate('admin-home')}
+            style={{
+              background: 'transparent',
+              color: safeColor('textMuted'),
+              border: 'none',
+              fontSize: '1rem',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '8px 12px',
+              borderRadius: '8px',
+              transition: 'all 0.2s'
+            }}
+            onMouseEnter={(e) => {
+              e.target.style.background = safeColor('primary') + '20';
+              e.target.style.color = safeColor('primary');
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.background = 'transparent';
+              e.target.style.color = safeColor('textMuted');
+            }}
+          >
+            ← Volver
+          </button>
+          <div>
+            <h1 style={{
+              fontSize: '1.8rem',
+              fontWeight: '700',
+              color: safeColor('textPrimary'),
+              margin: '0 0 8px 0'
+            }}>
+              Lista de Estudiantes
+            </h1>
+            <p style={{
+              fontSize: '1rem',
+              color: safeColor('textMuted'),
+              margin: 0
+            }}>
+              Gestiona y supervisa el progreso de los estudiantes
+            </p>
+          </div>
         </div>
         <div style={{
           fontSize: '1rem',

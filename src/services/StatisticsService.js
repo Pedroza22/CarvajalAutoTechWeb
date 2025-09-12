@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+0import { supabase } from './supabase';
 
 class StatisticsService {
   /**
