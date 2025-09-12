@@ -450,20 +450,6 @@ const AdminCategoriesPage = ({ onNavigate }) => {
                     ✏️ Editar
                   </button>
                   <button
-                    onClick={() => handleAssignStudents(category)}
-                    style={{
-                      background: safeColor('info'),
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '8px',
-                      padding: '8px 16px',
-                      fontSize: '0.9rem',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    👥 Asignar
-                  </button>
-                  <button
                     onClick={() => handleDeleteCategory(category)}
                     style={{
                       background: safeColor('error'),
@@ -636,6 +622,36 @@ const AdminCategoriesPage = ({ onNavigate }) => {
                   }}
                 />
               </div>
+
+              {/* Botón Asignar Estudiantes (solo al editar) */}
+              {editingCategory && (
+                <div style={{ marginBottom: '20px' }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowCreateModal(false);
+                      handleAssignStudents(editingCategory);
+                    }}
+                    style={{
+                      background: safeColor('primary'),
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '8px',
+                      padding: '12px 20px',
+                      fontSize: '1rem',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      width: '100%',
+                      justifyContent: 'center'
+                    }}
+                  >
+                    👥 Asignar Estudiantes
+                  </button>
+                </div>
+              )}
 
               {/* Botones */}
               <div style={{
