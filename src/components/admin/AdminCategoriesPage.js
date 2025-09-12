@@ -214,26 +214,31 @@ const AdminCategoriesPage = ({ onNavigate }) => {
         await CategoriesService.updateCategory(editingCategory.id, formData);
         alert('Categoría actualizada exitosamente');
       } else {
+        // Obtener el ID del usuario actual
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          alert('Error: Usuario no autenticado');
+          return;
+        }
+
         await CategoriesService.createCategory({
           ...formData,
-          createdBy: 'current-user-id' // TODO: Obtener del contexto de usuario
+          createdBy: user.id
         });
         alert('Categoría creada exitosamente');
       }
       
       setShowCreateModal(false);
       setEditingCategory(null);
-      setFormData({ name: '', description: '', icon: '📂' });
+      setFormData({ name: '', description: '', color: '#6366f1', icon: '📚' });
       
       // Recargar categorías sin afectar el flujo principal
       loadCategories().catch(err => {
         console.error('❌ Error recargando categorías:', err);
       });
     } catch (error) {
-      if (error) {
-        console.error('❌ Error guardando categoría:', error);
-        alert('Error al guardar la categoría');
-      }
+      console.error('❌ Error guardando categoría:', error);
+      alert('Error al guardar la categoría');
     }
   };
 

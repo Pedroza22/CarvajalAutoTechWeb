@@ -28,7 +28,8 @@ const StudentDashboard = ({
   isLoadingCategories = false, 
   studentStats = {}, 
   onLogout, 
-  onStartQuiz 
+  onStartQuiz,
+  onViewCategoryQuestions 
 }) => {
   const categoriesList = Array.isArray(categories) ? categories : [];
   
@@ -286,6 +287,7 @@ const StudentDashboard = ({
                       lastScore: isPublished && stats.totalAnswers > 0 ? stats.successPercentage : null
                     }}
                     onStartQuiz={() => onStartQuiz(category.id)}
+                    onViewQuestions={() => onViewCategoryQuestions(category)}
                   />
                 );
               })}

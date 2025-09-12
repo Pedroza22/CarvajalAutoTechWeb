@@ -18,7 +18,7 @@ const safeColor = (colorName) => {
   return AppConstants?.colors?.[colorName] || fallbackColors[colorName] || '#4b5563';
 };
 
-const CategoryQuizCard = ({ category, onTap, onStartQuiz }) => {
+const CategoryQuizCard = ({ category, onTap, onStartQuiz, onViewQuestions }) => {
   const [isPressed, setIsPressed] = useState(false);
 
   // Lista de colores para asignar por categoría
@@ -62,35 +62,24 @@ const CategoryQuizCard = ({ category, onTap, onStartQuiz }) => {
   const lastScore = category.lastScore;
   const color = getCategoryColor(name);
 
-  const handleMouseDown = () => {
-    setIsPressed(true);
+  const handleViewQuestions = (e) => {
+    e.stopPropagation();
+    if (onViewQuestions) onViewQuestions();
   };
 
-  const handleMouseUp = () => {
-    setIsPressed(false);
-    const action = typeof onTap === 'function' 
-      ? onTap 
-      : (typeof onStartQuiz === 'function' ? onStartQuiz : null);
-    if (action) action();
-  };
-
-  const handleMouseLeave = () => {
-    setIsPressed(false);
+  const handleStartQuiz = (e) => {
+    e.stopPropagation();
+    if (onStartQuiz) onStartQuiz();
   };
 
   return (
     <div
-      onMouseDown={handleMouseDown}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseLeave}
       style={{
         padding: '20px',
         background: `linear-gradient(135deg, ${safeColor('cardBg')}, ${color}0D)`,
         borderRadius: '16px',
         border: `1px solid ${color}4D`,
         boxShadow: `0 2px 8px ${color}1A`,
-        cursor: 'pointer',
-        transform: isPressed ? 'scale(0.98)' : 'scale(1)',
         transition: 'all 0.15s ease',
         marginBottom: '16px'
       }}
@@ -162,9 +151,9 @@ const CategoryQuizCard = ({ category, onTap, onStartQuiz }) => {
               </div>
             </div>
 
-            <div style={{ marginLeft: '16px' }}>
-              {/* Última puntuación o botón de comenzar */}
-              {lastScore !== null ? (
+            <div style={{ marginLeft: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {/* Última puntuación */}
+              {lastScore !== null && (
                 <div style={{
                   padding: '6px 12px',
                   background: `${getScoreColor(lastScore)}33`,
@@ -172,33 +161,74 @@ const CategoryQuizCard = ({ category, onTap, onStartQuiz }) => {
                   border: `1px solid ${getScoreColor(lastScore)}80`,
                   color: getScoreColor(lastScore),
                   fontSize: '12px',
-                  fontWeight: '600'
+                  fontWeight: '600',
+                  textAlign: 'center'
                 }}>
                   {lastScore}%
-                </div>
-              ) : (
-                <div style={{
-                  padding: '6px 12px',
-                  background: `linear-gradient(135deg, ${color}, ${color}CC)`,
-                  borderRadius: '12px',
-                  color: safeColor('textPrimary'),
-                  fontSize: '10px',
-                  fontWeight: '700'
-                }}>
-                  NUEVO
                 </div>
               )}
             </div>
           </div>
         </div>
 
-        {/* Flecha */}
+        {/* Botones de acción */}
         <div style={{
-          color: color,
-          fontSize: '20px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '8px',
           marginLeft: '16px'
         }}>
-          →
+          <button
+            onClick={handleViewQuestions}
+            style={{
+              background: 'transparent',
+              border: `1px solid ${color}`,
+              color: color,
+              borderRadius: '8px',
+              padding: '8px 12px',
+              fontSize: '12px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              whiteSpace: 'nowrap'
+            }}
+            onMouseEnter={(e) => {
+              e.target.style.background = color;
+              e.target.style.color = 'white';
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.background = 'transparent';
+              e.target.style.color = color;
+            }}
+          >
+            📝 Ver Preguntas
+          </button>
+          
+          <button
+            onClick={handleStartQuiz}
+            style={{
+              background: color,
+              border: `1px solid ${color}`,
+              color: 'white',
+              borderRadius: '8px',
+              padding: '8px 12px',
+              fontSize: '12px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              whiteSpace: 'nowrap'
+            }}
+            onMouseEnter={(e) => {
+              e.target.style.background = 'transparent';
+              e.target.style.color = color;
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.background = color;
+              e.target.style.color = 'white';
+            }}
+          >
+            🚀 Comenzar Quiz
+          </button>
         </div>
       </div>
     </div>

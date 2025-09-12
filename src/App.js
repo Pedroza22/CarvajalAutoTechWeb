@@ -5,6 +5,7 @@ import CustomButton from './components/CustomButton';
 import LoginScreenWrapper from './components/LoginScreenWrapper';
 import Logo from './components/Logo';
 import StudentDashboard from './components/StudentDashboard';
+import CategoryQuestionsPage from './components/CategoryQuestionsPage';
 import AdminCategoriesPage from './components/AdminCategoriesPage';
 import AdminHomePage from './components/admin/AdminHomePage';
 import AdminQuestionsListPage from './components/admin/AdminQuestionsListPage';
@@ -255,6 +256,18 @@ function App() {
     // Si el usuario está autenticado, mostrar dashboard según rol
     if (user) {
       if (userRole === 'student') {
+        // Si estamos viendo preguntas de una categoría específica
+        if (currentPage === 'category-questions' && currentPageData?.category) {
+          return (
+            <CategoryQuestionsPage
+              category={currentPageData.category}
+              user={user}
+              onBack={() => setCurrentPage('student-dashboard')}
+              onStartQuiz={(categoryId) => console.log('Start quiz category:', categoryId)}
+            />
+          );
+        }
+
         return (
           <StudentDashboard
             user={user}
@@ -269,6 +282,10 @@ function App() {
             }}
             onLogout={signOut}
             onStartQuiz={(categoryId) => console.log('Start quiz category:', categoryId)}
+            onViewCategoryQuestions={(category) => {
+              setCurrentPage('category-questions');
+              setCurrentPageData({ category });
+            }}
           />
         );
       } else if (userRole === 'admin') {
