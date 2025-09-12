@@ -172,7 +172,7 @@ const AdminCreateQuestionPage = ({ onNavigate, questionData = null }) => {
         timeLimit: formData.timeLimit ? parseInt(formData.timeLimit) : null,
         explanation: formData.explanation.trim() || null,
         imageUrl: imageUrl,
-        createdBy: 'current-user-id' // Se manejará en el servicio
+        // createdBy se manejará en el servicio
       };
 
       if (isEditing) {
