@@ -894,7 +894,7 @@ const CategoryQuestionsPage = ({ category, user, onBack, onStartQuiz }) => {
                 <CustomButton
                   text={currentQuestionIndex === questions.length - 1 ? "Finalizar" : "Siguiente →"}
                   onClick={currentQuestionIndex === questions.length - 1 ? handleSubmitQuiz : nextQuestion}
-                  disabled={!studentAnswers[questions[currentQuestionIndex]?.id] && !showResults}
+                  disabled={false} // Permitir finalizar siempre, incluso sin respuesta
                   style={{
                     fontSize: '0.9rem',
                     padding: '8px 16px'

@@ -280,12 +280,13 @@ class StudentCategoriesService {
       // Preparar los datos para insertar con is_correct
       const answersToInsert = Object.entries(answers).map(([questionId, answer]) => {
         const correctAnswer = correctAnswersMap[questionId];
-        const isCorrect = answer === correctAnswer;
+        // Si la respuesta es 'TIMEOUT' o no está definida, marcar como incorrecta
+        const isCorrect = answer && answer !== 'TIMEOUT' && answer === correctAnswer;
         
         return {
           student_id: studentId,
           question_id: questionId,
-          answer: answer,
+          answer: answer || 'NO_ANSWER',
           is_correct: isCorrect,
           answered_at: new Date().toISOString()
         };

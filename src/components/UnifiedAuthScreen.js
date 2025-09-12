@@ -8,7 +8,9 @@ const UnifiedAuthScreen = ({ onSuccess, onBack }) => {
   const [isLogin, setIsLogin] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState({});
-  const { signIn, signUp } = useAuth();
+  const [showResetPassword, setShowResetPassword] = useState(false);
+  const [resetEmailSent, setResetEmailSent] = useState(false);
+  const { signIn, signUp, resetPassword } = useAuth();
 
   // Referencias para los inputs (uncontrolled)
   const emailRef = useRef();
@@ -108,12 +110,51 @@ const UnifiedAuthScreen = ({ onSuccess, onBack }) => {
   const toggleMode = () => {
     setIsLogin(!isLogin);
     setErrors({});
+    setShowResetPassword(false);
+    setResetEmailSent(false);
     // Limpiar los inputs
     if (emailRef.current) emailRef.current.value = '';
     if (passwordRef.current) passwordRef.current.value = '';
     if (confirmPasswordRef.current) confirmPasswordRef.current.value = '';
     if (firstNameRef.current) firstNameRef.current.value = '';
     if (lastNameRef.current) lastNameRef.current.value = '';
+  };
+
+  const handleResetPassword = async (e) => {
+    e.preventDefault();
+    
+    const email = emailRef.current?.value?.trim();
+    if (!email) {
+      setErrors({ email: 'El email es requerido' });
+      return;
+    }
+    
+    if (!AppConstants.emailRegex.test(email)) {
+      setErrors({ email: 'Email inválido' });
+      return;
+    }
+
+    setIsLoading(true);
+    setErrors({});
+
+    try {
+      const result = await resetPassword(email);
+      if (result.success) {
+        setResetEmailSent(true);
+      } else {
+        setErrors({ general: result.error });
+      }
+    } catch (error) {
+      setErrors({ general: 'Error inesperado. Intenta nuevamente.' });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const backToLogin = () => {
+    setShowResetPassword(false);
+    setResetEmailSent(false);
+    setErrors({});
   };
 
   return (
@@ -135,14 +176,23 @@ const UnifiedAuthScreen = ({ onSuccess, onBack }) => {
           fontSize: '24px',
           fontWeight: '600'
         }}>
-          {isLogin ? 'Iniciar Sesión' : 'Crear Cuenta'}
+          {showResetPassword 
+            ? (resetEmailSent ? 'Email Enviado' : 'Restablecer Contraseña')
+            : (isLogin ? 'Iniciar Sesión' : 'Crear Cuenta')
+          }
         </h2>
         <p style={{
           margin: '0',
           color: getColor('textMuted'),
           fontSize: '14px'
         }}>
-          {isLogin ? 'Ingresa tus credenciales' : 'Completa tus datos para registrarte'}
+          {showResetPassword 
+            ? (resetEmailSent 
+              ? 'Revisa tu correo para continuar'
+              : 'Ingresa tu email para recibir el enlace de restablecimiento'
+            )
+            : (isLogin ? 'Ingresa tus credenciales' : 'Completa tus datos para registrarte')
+          }
         </p>
       </div>
 
@@ -163,98 +213,206 @@ const UnifiedAuthScreen = ({ onSuccess, onBack }) => {
       )}
 
       {/* Formulario */}
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-        {/* Campos para registro */}
-        {!isLogin && (
+      <form onSubmit={showResetPassword ? handleResetPassword : handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        {/* Contenido para reset password */}
+        {showResetPassword ? (
           <>
-            <div style={{ display: 'flex', gap: '12px' }}>
+            {!resetEmailSent ? (
+              <>
+                {/* Email para reset */}
+                <UncontrolledInput
+                  ref={emailRef}
+                  type="email"
+                  label="Correo Electrónico"
+                  placeholder="tu@email.com"
+                  required
+                  error={errors.email}
+                />
+              </>
+            ) : (
+              <>
+                {/* Mensaje de confirmación */}
+                <div style={{
+                  padding: '16px',
+                  background: getColor('success') + '20',
+                  border: `1px solid ${getColor('success')}40`,
+                  borderRadius: '8px',
+                  color: getColor('success'),
+                  fontSize: '14px',
+                  textAlign: 'center'
+                }}>
+                  ✅ Se ha enviado un enlace de restablecimiento a tu correo electrónico.
+                  <br />
+                  <small style={{ opacity: 0.8 }}>
+                    Revisa tu bandeja de entrada y spam.
+                  </small>
+                </div>
+              </>
+            )}
+          </>
+        ) : (
+          <>
+            {/* Campos para registro */}
+            {!isLogin && (
+              <>
+                <div style={{ display: 'flex', gap: '12px' }}>
+                  <UncontrolledInput
+                    ref={firstNameRef}
+                    label="Nombre"
+                    placeholder="Tu nombre"
+                    required
+                    error={errors.firstName}
+                    style={{ flex: 1 }}
+                  />
+                  <UncontrolledInput
+                    ref={lastNameRef}
+                    label="Apellido"
+                    placeholder="Tu apellido"
+                    required
+                    error={errors.lastName}
+                    style={{ flex: 1 }}
+                  />
+                </div>
+              </>
+            )}
+
+            {/* Email */}
+            <UncontrolledInput
+              ref={emailRef}
+              type="email"
+              label="Correo Electrónico"
+              placeholder="tu@email.com"
+              required
+              error={errors.email}
+            />
+
+            {/* Contraseña */}
+            <UncontrolledInput
+              ref={passwordRef}
+              type="password"
+              label="Contraseña"
+              placeholder="Tu contraseña"
+              required
+              error={errors.password}
+            />
+
+            {/* Confirmar contraseña (solo en registro) */}
+            {!isLogin && (
               <UncontrolledInput
-                ref={firstNameRef}
-                label="Nombre"
-                placeholder="Tu nombre"
+                ref={confirmPasswordRef}
+                type="password"
+                label="Confirmar Contraseña"
+                placeholder="Repite tu contraseña"
                 required
-                error={errors.firstName}
-                style={{ flex: 1 }}
+                error={errors.confirmPassword}
               />
-              <UncontrolledInput
-                ref={lastNameRef}
-                label="Apellido"
-                placeholder="Tu apellido"
-                required
-                error={errors.lastName}
-                style={{ flex: 1 }}
-              />
-            </div>
+            )}
           </>
         )}
 
-        {/* Email */}
-        <UncontrolledInput
-          ref={emailRef}
-          type="email"
-          label="Correo Electrónico"
-          placeholder="tu@email.com"
-          required
-          error={errors.email}
-        />
-
-        {/* Contraseña */}
-        <UncontrolledInput
-          ref={passwordRef}
-          type="password"
-          label="Contraseña"
-          placeholder="Tu contraseña"
-          required
-          error={errors.password}
-        />
-
-        {/* Confirmar contraseña (solo en registro) */}
-        {!isLogin && (
-          <UncontrolledInput
-            ref={confirmPasswordRef}
-            type="password"
-            label="Confirmar Contraseña"
-            placeholder="Repite tu contraseña"
-            required
-            error={errors.confirmPassword}
+        {/* Botón de envío */}
+        {!resetEmailSent && (
+          <CustomButton
+            type="submit"
+            text={
+              isLoading 
+                ? 'Procesando...' 
+                : showResetPassword 
+                  ? 'Enviar Enlace'
+                  : (isLogin ? 'Iniciar Sesión' : 'Crear Cuenta')
+            }
+            isLoading={isLoading}
+            variant="primary"
+            fullWidth
+            style={{ marginTop: '8px' }}
           />
         )}
 
-        {/* Botón de envío */}
-        <CustomButton
-          type="submit"
-          text={isLoading ? 'Procesando...' : (isLogin ? 'Iniciar Sesión' : 'Crear Cuenta')}
-          isLoading={isLoading}
-          variant="primary"
-          fullWidth
-          style={{ marginTop: '8px' }}
-        />
-
-        {/* Toggle entre login y registro */}
+        {/* Navegación */}
         <div style={{ textAlign: 'center', marginTop: '16px' }}>
-          <p style={{
-            margin: '0',
-            color: getColor('textMuted'),
-            fontSize: '14px'
-          }}>
-            {isLogin ? '¿No tienes cuenta?' : '¿Ya tienes cuenta?'}
-          </p>
-          <button
-            type="button"
-            onClick={toggleMode}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: getColor('primary'),
-              fontSize: '14px',
-              fontWeight: '600',
-              cursor: 'pointer',
-              textDecoration: 'underline',
-              marginTop: '4px'
-            }}
-          >
-            {isLogin ? 'Regístrate aquí' : 'Inicia sesión aquí'}
-          </button>
+          {showResetPassword ? (
+            <>
+              {resetEmailSent ? (
+                <button
+                  type="button"
+                  onClick={backToLogin}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: getColor('primary'),
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    textDecoration: 'underline'
+                  }}
+                >
+                  ← Volver al login
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={backToLogin}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: getColor('textMuted'),
+                    fontSize: '14px',
+                    cursor: 'pointer',
+                    textDecoration: 'underline'
+                  }}
+                >
+                  ← Volver al login
+                </button>
+              )}
+            </>
+          ) : (
+            <>
+              {/* Enlace de olvidé contraseña (solo en login) */}
+              {isLogin && (
+                <div style={{ marginBottom: '12px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setShowResetPassword(true)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: getColor('textMuted'),
+                      fontSize: '13px',
+                      cursor: 'pointer',
+                      textDecoration: 'underline'
+                    }}
+                  >
+                    ¿Olvidaste tu contraseña?
+                  </button>
+                </div>
+              )}
+              
+              {/* Toggle entre login y registro */}
+              <p style={{
+                margin: '0',
+                color: getColor('textMuted'),
+                fontSize: '14px'
+              }}>
+                {isLogin ? '¿No tienes cuenta?' : '¿Ya tienes cuenta?'}
+              </p>
+              <button
+                type="button"
+                onClick={toggleMode}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: getColor('primary'),
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  textDecoration: 'underline',
+                  marginTop: '4px'
+                }}
+              >
+                {isLogin ? 'Regístrate aquí' : 'Inicia sesión aquí'}
+              </button>
+            </>
+          )}
         </div>
       </form>
 

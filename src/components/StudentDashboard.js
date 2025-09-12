@@ -26,7 +26,6 @@ const StudentDashboard = ({
   user, 
   categories = [], 
   isLoadingCategories = false, 
-  studentStats = {}, 
   onLogout, 
   onStartQuiz,
   onNavigate
@@ -38,6 +37,13 @@ const StudentDashboard = ({
   const [categoryStats, setCategoryStats] = useState({});
   const [recentActivity, setRecentActivity] = useState([]);
   const [loadingActivity, setLoadingActivity] = useState(true);
+  const [studentStats, setStudentStats] = useState({
+    totalAnswered: 0,
+    correctAnswers: 0,
+    incorrectAnswers: 0,
+    accuracyPercentage: 0,
+    streak: 0
+  });
   const categoriesCount = categoriesList.length;
 
   // Cargar estado de publicación y estadísticas por categoría
@@ -62,8 +68,7 @@ const StudentDashboard = ({
         // Transformar stats a un objeto por category_id
         const statsMap = {};
         if (stats && stats.categoryStats) {
-          // Necesitamos mapear por nombre de categoría a ID
-          // Por ahora, usaremos las estadísticas generales para todas las categorías
+          // Mapear por nombre de categoría a ID
           Object.keys(stats.categoryStats).forEach(categoryName => {
             const categoryStat = stats.categoryStats[categoryName];
             // Buscar la categoría por nombre en la lista de categorías
@@ -78,6 +83,15 @@ const StudentDashboard = ({
             }
           });
         }
+        
+        // Actualizar las estadísticas generales del estudiante
+        setStudentStats({
+          totalAnswered: stats?.totalAnswers || 0,
+          correctAnswers: stats?.correctAnswers || 0,
+          incorrectAnswers: stats?.incorrectAnswers || 0,
+          accuracyPercentage: stats?.accuracyPercentage || 0,
+          streak: 0 // Se puede implementar si es necesario
+        });
         
         setCategoryPublicationStatus(publicationStatusMap);
         setCategoryStats(statsMap);
@@ -96,7 +110,7 @@ const StudentDashboard = ({
       
       try {
         setLoadingActivity(true);
-        const activity = await StatisticsService.getRecentActivity(user.id);
+        const activity = await StatisticsService.getRecentActivity(user.id, 7);
         setRecentActivity(activity || []);
       } catch (error) {
         console.error('❌ Error cargando actividad reciente:', error);
@@ -295,8 +309,11 @@ const StudentDashboard = ({
           ) : (
             <div style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-              gap: '24px'
+              gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+              gap: '24px',
+              justifyContent: 'center',
+              maxWidth: '1200px',
+              margin: '0 auto'
             }}>
               {categoriesList.map((category) => {
                 const isPublished = categoryPublicationStatus[category.id] || false;

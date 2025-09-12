@@ -132,6 +132,28 @@ export const useAuth = () => {
     }
   };
 
+  // Función de reset password
+  const resetPassword = async (email) => {
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`
+      });
+
+      if (error) throw error;
+
+      return { success: true };
+    } catch (error) {
+      console.error('Error en reset password:', error);
+      return { 
+        success: false, 
+        error: error.message || 'Error al enviar el email de restablecimiento' 
+      };
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Calcular roles usando useMemo para estabilidad
   const isAdmin = useMemo(() => {
     return user?.user_metadata?.role === 'admin';
@@ -149,6 +171,7 @@ export const useAuth = () => {
     isStudent,
     signIn,
     signUp,
-    signOut
+    signOut,
+    resetPassword
   };
 };

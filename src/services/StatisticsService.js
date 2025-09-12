@@ -366,13 +366,15 @@ class StatisticsService {
   }
 
   /**
-   * Obtiene actividad reciente
+   * Obtiene actividad reciente para un estudiante específico
    */
-  async getRecentActivity(startDate, endDate) {
+  async getRecentActivity(studentId, days = 7) {
     try {
-      // Asegurar que las fechas sean objetos Date válidos
-      const start = startDate instanceof Date ? startDate : new Date(startDate);
-      const end = endDate instanceof Date ? endDate : new Date(endDate);
+      console.log('🔍 Obteniendo actividad reciente para estudiante:', studentId);
+      
+      // Calcular fecha de inicio (hace X días)
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - days);
       
       const { data, error } = await supabase
         .from('student_answers')
@@ -381,33 +383,116 @@ class StatisticsService {
           student_id,
           is_correct,
           questions (
+            id,
             question,
             categories (
+              id,
               name
             )
           )
         `)
-        .gte('answered_at', start.toISOString())
-        .lte('answered_at', end.toISOString())
+        .eq('student_id', studentId)
+        .gte('answered_at', startDate.toISOString())
         .order('answered_at', { ascending: false })
         .limit(10);
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Error obteniendo actividad reciente:', error);
+        throw error;
+      }
 
-      if (!data) return [];
+      if (!data || data.length === 0) {
+        console.log('⚠️ No hay actividad reciente para el estudiante');
+        return [];
+      }
 
-      // Transformar datos para el formato esperado
-      return data.map(activity => ({
-        type: 'quiz_completed',
-        student: `Estudiante ${activity.student_id.substring(0, 8)}`,
-        score: activity.is_correct ? 100 : 0,
-        date: activity.answered_at,
-        category: activity.questions?.categories?.name || 'Sin categoría'
-      }));
+      // Agrupar por categoría y calcular estadísticas
+      const categoryActivity = {};
+      data.forEach(activity => {
+        const categoryId = activity.questions?.categories?.id;
+        const categoryName = activity.questions?.categories?.name || 'Sin categoría';
+        
+        if (!categoryActivity[categoryId]) {
+          categoryActivity[categoryId] = {
+            categoryId,
+            categoryName,
+            totalAnswers: 0,
+            correctAnswers: 0,
+            lastAnswered: activity.answered_at
+          };
+        }
+        
+        categoryActivity[categoryId].totalAnswers++;
+        if (activity.is_correct) {
+          categoryActivity[categoryId].correctAnswers++;
+        }
+      });
+
+      // Transformar a array y calcular métricas
+      const recentActivity = Object.values(categoryActivity).map(activity => {
+        const accuracy = activity.totalAnswers > 0 
+          ? Math.round((activity.correctAnswers / activity.totalAnswers) * 100) 
+          : 0;
+        
+        const timeAgo = this.getTimeAgo(activity.lastAnswered);
+        
+        return {
+          categoryId: activity.categoryId,
+          categoryName: activity.categoryName,
+          totalAnswers: activity.totalAnswers,
+          correctAnswers: activity.correctAnswers,
+          accuracy,
+          timeAgo,
+          color: this.getCategoryColor(activity.categoryName),
+          icon: this.getCategoryIcon(activity.categoryName)
+        };
+      });
+
+      console.log('✅ Actividad reciente obtenida:', recentActivity.length, 'actividades');
+      return recentActivity;
     } catch (error) {
-      console.error('Error obteniendo actividad reciente:', error);
+      console.error('❌ Error obteniendo actividad reciente:', error);
       return [];
     }
+  }
+
+  /**
+   * Calcula el tiempo transcurrido desde una fecha
+   */
+  getTimeAgo(dateString) {
+    const now = new Date();
+    const date = new Date(dateString);
+    const diffInSeconds = Math.floor((now - date) / 1000);
+    
+    if (diffInSeconds < 60) return 'Hace un momento';
+    if (diffInSeconds < 3600) return `Hace ${Math.floor(diffInSeconds / 60)} min`;
+    if (diffInSeconds < 86400) return `Hace ${Math.floor(diffInSeconds / 3600)} h`;
+    if (diffInSeconds < 2592000) return `Hace ${Math.floor(diffInSeconds / 86400)} días`;
+    return date.toLocaleDateString('es-ES');
+  }
+
+  /**
+   * Obtiene un color para la categoría
+   */
+  getCategoryColor(categoryName) {
+    const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
+    const hash = categoryName.split('').reduce((a, b) => {
+      a = ((a << 5) - a) + b.charCodeAt(0);
+      return a & a;
+    }, 0);
+    return colors[Math.abs(hash) % colors.length];
+  }
+
+  /**
+   * Obtiene un icono para la categoría
+   */
+  getCategoryIcon(categoryName) {
+    const icons = ['📚', '🔬', '🧮', '🌍', '💻', '🎨', '⚡', '🔧'];
+    const hash = categoryName.split('').reduce((a, b) => {
+      a = ((a << 5) - a) + b.charCodeAt(0);
+      return a & a;
+    }, 0);
+    return icons[Math.abs(hash) % icons.length];
   }
 
   /**
@@ -589,12 +674,14 @@ class StatisticsService {
    */
   async getStudentStatistics(studentId) {
     try {
+      console.log('🔍 Obteniendo estadísticas para estudiante:', studentId);
+      
       const { data, error } = await supabase
         .from('student_answers')
         .select(`
           id,
           is_correct,
-          created_at,
+          answered_at,
           questions (
             id,
             categories (
@@ -604,12 +691,27 @@ class StatisticsService {
         `)
         .eq('student_id', studentId);
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Error obteniendo estadísticas del estudiante:', error);
+        throw error;
+      }
 
-      if (!data) return null;
+      if (!data || data.length === 0) {
+        console.log('⚠️ No hay respuestas para el estudiante');
+        return {
+          totalAnswers: 0,
+          correctAnswers: 0,
+          incorrectAnswers: 0,
+          accuracy: 0,
+          accuracyPercentage: 0,
+          categoryStats: {},
+          lastActivity: null
+        };
+      }
 
       const totalAnswers = data.length;
       const correctAnswers = data.filter(a => a.is_correct).length;
+      const incorrectAnswers = totalAnswers - correctAnswers;
       const accuracy = totalAnswers > 0 ? Math.round((correctAnswers / totalAnswers) * 100) : 0;
 
       // Agrupar por categoría
@@ -625,16 +727,29 @@ class StatisticsService {
         }
       });
 
-      return {
+      const result = {
         totalAnswers,
         correctAnswers,
+        incorrectAnswers,
         accuracy,
+        accuracyPercentage: accuracy,
         categoryStats,
-        lastActivity: data.length > 0 ? data[0].created_at : null
+        lastActivity: data.length > 0 ? data[0].answered_at : null
       };
+
+      console.log('✅ Estadísticas del estudiante obtenidas:', result);
+      return result;
     } catch (error) {
-      console.error('Error obteniendo estadísticas del estudiante:', error);
-      return null;
+      console.error('❌ Error obteniendo estadísticas del estudiante:', error);
+      return {
+        totalAnswers: 0,
+        correctAnswers: 0,
+        incorrectAnswers: 0,
+        accuracy: 0,
+        accuracyPercentage: 0,
+        categoryStats: {},
+        lastActivity: null
+      };
     }
   }
 
