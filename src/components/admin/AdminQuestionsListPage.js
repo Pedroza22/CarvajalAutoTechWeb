@@ -61,7 +61,7 @@ const AdminQuestionsListPage = ({ onNavigate }) => {
   };
 
   const handleDeleteQuestion = async (questionId) => {
-    if (!confirm('¿Estás seguro de que quieres eliminar esta pregunta?')) {
+    if (!window.confirm('¿Estás seguro de que quieres eliminar esta pregunta?')) {
       return;
     }
 
@@ -69,11 +69,11 @@ const AdminQuestionsListPage = ({ onNavigate }) => {
       setLoading(true);
       await QuestionsService.deleteQuestion(questionId);
       console.log('✅ Pregunta eliminada exitosamente');
-      alert('Pregunta eliminada exitosamente');
+      window.alert('Pregunta eliminada exitosamente');
       await loadQuestions(); // Recargar la lista
     } catch (error) {
       console.error('❌ Error eliminando pregunta:', error);
-      alert('Error al eliminar la pregunta: ' + (error.message || 'Error desconocido'));
+      window.alert('Error al eliminar la pregunta: ' + (error.message || 'Error desconocido'));
     } finally {
       setLoading(false);
     }

@@ -65,13 +65,13 @@ const AdminCreateQuestionPage = ({ onNavigate, questionData = null }) => {
     if (file) {
       // Validar tipo de archivo
       if (!file.type.startsWith('image/')) {
-        alert('Por favor selecciona un archivo de imagen válido');
+        window.alert('Por favor selecciona un archivo de imagen válido');
         return;
       }
       
       // Validar tamaño (máximo 5MB)
       if (file.size > 5 * 1024 * 1024) {
-        alert('El archivo es demasiado grande. Máximo 5MB');
+        window.alert('El archivo es demasiado grande. Máximo 5MB');
         return;
       }
       
@@ -138,17 +138,17 @@ const AdminCreateQuestionPage = ({ onNavigate, questionData = null }) => {
     e.preventDefault();
     
     if (!formData.question.trim()) {
-      alert('La pregunta es obligatoria');
+      window.alert('La pregunta es obligatoria');
       return;
     }
     
     if (!formData.categoryId) {
-      alert('Selecciona una categoría');
+      window.alert('Selecciona una categoría');
       return;
     }
     
     if (formData.type !== 'free_text' && !formData.correctAnswer) {
-      alert('Selecciona la respuesta correcta');
+      window.alert('Selecciona la respuesta correcta');
       return;
     }
 
@@ -177,10 +177,10 @@ const AdminCreateQuestionPage = ({ onNavigate, questionData = null }) => {
 
       if (isEditing) {
         await QuestionsService.updateQuestion(questionData.id, questionPayload);
-        alert('Pregunta actualizada exitosamente');
+        window.alert('Pregunta actualizada exitosamente');
       } else {
         await QuestionsService.createQuestion(questionPayload);
-        alert('Pregunta creada exitosamente');
+        window.alert('Pregunta creada exitosamente');
       }
       
       // Navegar después de mostrar el mensaje
@@ -190,7 +190,7 @@ const AdminCreateQuestionPage = ({ onNavigate, questionData = null }) => {
       
     } catch (error) {
       console.error('❌ Error guardando pregunta:', error);
-      alert('Error al guardar la pregunta: ' + (error.message || 'Error desconocido'));
+      window.alert('Error al guardar la pregunta: ' + (error.message || 'Error desconocido'));
     } finally {
       setLoading(false);
     }
