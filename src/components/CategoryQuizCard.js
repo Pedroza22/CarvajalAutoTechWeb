@@ -18,7 +18,7 @@ const safeColor = (colorName) => {
   return AppConstants?.colors?.[colorName] || fallbackColors[colorName] || '#4b5563';
 };
 
-const CategoryQuizCard = ({ category, onTap, onStartQuiz, onViewQuestions }) => {
+const CategoryQuizCard = ({ category, onTap, onStartQuiz }) => {
   // const [isPressed, setIsPressed] = useState(false);
 
   // Lista de colores para asignar por categoría
@@ -62,11 +62,6 @@ const CategoryQuizCard = ({ category, onTap, onStartQuiz, onViewQuestions }) => 
   const lastScore = category.lastScore;
   const color = getCategoryColor(name);
 
-  const handleViewQuestions = (e) => {
-    e.stopPropagation();
-    if (onViewQuestions) onViewQuestions();
-  };
-
   const handleStartQuiz = (e) => {
     e.stopPropagation();
     if (onStartQuiz) onStartQuiz();
@@ -75,31 +70,38 @@ const CategoryQuizCard = ({ category, onTap, onStartQuiz, onViewQuestions }) => 
   return (
     <div
       style={{
-        padding: '20px',
+        padding: '16px',
         background: `linear-gradient(135deg, ${safeColor('cardBg')}, ${color}0D)`,
         borderRadius: '16px',
         border: `1px solid ${color}4D`,
         boxShadow: `0 2px 8px ${color}1A`,
         transition: 'all 0.15s ease',
-        marginBottom: '16px'
+        marginBottom: '16px',
+        maxWidth: '100%',
+        overflow: 'hidden'
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center' }}>
+      <div style={{ 
+        display: 'flex', 
+        alignItems: 'center',
+        gap: '12px',
+        minWidth: 0 // Permite que el contenido se comprima
+      }}>
         {/* Recuadro con la primera letra */}
         <div style={{
-          width: '60px',
-          height: '60px',
+          width: '50px',
+          height: '50px',
           background: `linear-gradient(135deg, ${color}, ${color}CC)`,
-          borderRadius: '15px',
+          borderRadius: '12px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           boxShadow: `0 2px 8px ${color}4D`,
-          marginRight: '16px'
+          flexShrink: 0
         }}>
           <span style={{
             color: safeColor('textPrimary'),
-            fontSize: '28px',
+            fontSize: '24px',
             fontWeight: 'bold'
           }}>
             {name.length > 0 ? name[0].toUpperCase() : "?"}
@@ -107,37 +109,47 @@ const CategoryQuizCard = ({ category, onTap, onStartQuiz, onViewQuestions }) => 
         </div>
 
         {/* Información */}
-        <div style={{ flex: 1 }}>
+        <div style={{ 
+          flex: 1, 
+          minWidth: 0, // Permite que el texto se trunque si es necesario
+          overflow: 'hidden'
+        }}>
           <div style={{
-            fontSize: '1.25rem',
+            fontSize: '1.1rem',
             fontWeight: '600',
             color: safeColor('textPrimary'),
-            marginBottom: '4px'
+            marginBottom: '4px',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis'
           }}>
             {name}
           </div>
           <div style={{
-            fontSize: '0.875rem',
+            fontSize: '0.8rem',
             color: safeColor('greyLight'),
-            marginBottom: '12px'
+            marginBottom: '8px',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis'
           }}>
             {category.description || ''}
           </div>
 
           {/* Progreso */}
-          <div style={{ display: 'flex', alignItems: 'center' }}>
-            <div style={{ flex: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{
                 color: safeColor('greyLight'),
-                fontSize: '12px',
+                fontSize: '11px',
                 fontWeight: '500',
-                marginBottom: '4px'
+                marginBottom: '3px'
               }}>
                 Progreso: {completed}/{questionCount}
               </div>
               <div style={{
                 width: '100%',
-                height: '4px',
+                height: '3px',
                 background: `${safeColor('border')}4D`,
                 borderRadius: '2px',
                 overflow: 'hidden'
@@ -151,80 +163,58 @@ const CategoryQuizCard = ({ category, onTap, onStartQuiz, onViewQuestions }) => 
               </div>
             </div>
 
-            <div style={{ marginLeft: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {/* Última puntuación */}
-              {lastScore !== null && (
-                <div style={{
-                  padding: '6px 12px',
-                  background: `${getScoreColor(lastScore)}33`,
-                  borderRadius: '12px',
-                  border: `1px solid ${getScoreColor(lastScore)}80`,
-                  color: getScoreColor(lastScore),
-                  fontSize: '12px',
-                  fontWeight: '600',
-                  textAlign: 'center'
-                }}>
-                  {lastScore}%
-                </div>
-              )}
-            </div>
+            {/* Última puntuación */}
+            {lastScore !== null && (
+              <div style={{
+                padding: '4px 8px',
+                background: `${getScoreColor(lastScore)}33`,
+                borderRadius: '8px',
+                border: `1px solid ${getScoreColor(lastScore)}80`,
+                color: getScoreColor(lastScore),
+                fontSize: '11px',
+                fontWeight: '600',
+                textAlign: 'center',
+                flexShrink: 0
+              }}>
+                {lastScore}%
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Botones de acción */}
+        {/* Botón de acción - Solo Comenzar Quiz */}
         <div style={{
           display: 'flex',
-          flexDirection: 'column',
-          gap: '8px',
-          marginLeft: '16px'
+          alignItems: 'center',
+          flexShrink: 0
         }}>
-          <button
-            onClick={handleViewQuestions}
-            style={{
-              background: 'transparent',
-              border: `1px solid ${color}`,
-              color: color,
-              borderRadius: '8px',
-              padding: '8px 12px',
-              fontSize: '12px',
-              fontWeight: '600',
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-              whiteSpace: 'nowrap'
-            }}
-            onMouseEnter={(e) => {
-              e.target.style.background = color;
-              e.target.style.color = 'white';
-            }}
-            onMouseLeave={(e) => {
-              e.target.style.background = 'transparent';
-              e.target.style.color = color;
-            }}
-          >
-            📝 Ver Preguntas
-          </button>
-          
           <button
             onClick={handleStartQuiz}
             style={{
               background: color,
               border: `1px solid ${color}`,
               color: 'white',
-              borderRadius: '8px',
-              padding: '8px 12px',
-              fontSize: '12px',
+              borderRadius: '10px',
+              padding: '10px 16px',
+              fontSize: '13px',
               fontWeight: '600',
               cursor: 'pointer',
               transition: 'all 0.2s',
-              whiteSpace: 'nowrap'
+              whiteSpace: 'nowrap',
+              minWidth: '110px',
+              boxShadow: `0 2px 8px ${color}4D`
             }}
             onMouseEnter={(e) => {
               e.target.style.background = 'transparent';
               e.target.style.color = color;
+              e.target.style.transform = 'translateY(-1px)';
+              e.target.style.boxShadow = `0 4px 12px ${color}6D`;
             }}
             onMouseLeave={(e) => {
               e.target.style.background = color;
               e.target.style.color = 'white';
+              e.target.style.transform = 'translateY(0)';
+              e.target.style.boxShadow = `0 2px 8px ${color}4D`;
             }}
           >
             🚀 Comenzar Quiz
