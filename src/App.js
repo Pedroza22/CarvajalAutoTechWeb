@@ -10,6 +10,7 @@ import AdminHomePage from './components/admin/AdminHomePage';
 import AdminQuestionsListPage from './components/admin/AdminQuestionsListPage';
 import AdminStatisticsPage from './components/admin/AdminStatisticsPage';
 import AdminStudentsPage from './components/admin/AdminStudentsPage';
+import AdminStudentsListPage from './components/admin/AdminStudentsListPage';
 import AdminStudentDetailPage from './components/admin/AdminStudentDetailPage';
 import AdminCreateQuestionPage from './components/admin/AdminCreateQuestionPage';
 import SupabaseConnectionTest from './components/SupabaseConnectionTest';
