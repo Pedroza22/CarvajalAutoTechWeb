@@ -71,16 +71,12 @@ class QuestionsService {
         .from('questions')
         .insert({
           quiz_id: null, // No requerimos quiz
-          category_id: questionData.categoryId,
-          created_by: user?.id,
           question_type: questionData.type,
           question_text: questionData.question,
           points: questionData.points || 1.00,
           order_index: questionData.orderIndex || 1,
           explanation: questionData.explanation,
-          media_url: questionData.imageUrl,
-          is_required: questionData.isRequired !== false,
-          metadata: questionData.metadata || {}
+          media_url: questionData.imageUrl
         })
         .select()
         .single();

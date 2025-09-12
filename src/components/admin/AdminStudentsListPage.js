@@ -51,12 +51,12 @@ const AdminStudentsListPage = ({ onNavigate }) => {
       
       switch (sortBy) {
         case 'name':
-          aValue = a.name.toLowerCase();
-          bValue = b.name.toLowerCase();
+          aValue = (a.name || '').toLowerCase();
+          bValue = (b.name || '').toLowerCase();
           break;
         case 'email':
-          aValue = a.email.toLowerCase();
-          bValue = b.email.toLowerCase();
+          aValue = (a.email || '').toLowerCase();
+          bValue = (b.email || '').toLowerCase();
           break;
         case 'joinedDate':
           aValue = new Date(a.created_at);
