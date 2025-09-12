@@ -53,13 +53,16 @@ class CategoriesService {
     try {
       console.log('🔍 Creando nueva categoría...');
       
+      // Obtener el usuario actual
+      const { data: { user } } = await supabase.auth.getUser();
+      
       const { data, error } = await supabase
         .from('categories')
         .insert({
           name: categoryData.name,
           description: categoryData.description,
           icon: categoryData.icon,
-          created_by: categoryData.createdBy
+          created_by: user?.id || categoryData.createdBy || 'system'
         })
         .select()
         .single();
