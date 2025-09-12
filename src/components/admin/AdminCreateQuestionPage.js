@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { getColor } from '../../utils/constants';
 import QuestionsService from '../../services/QuestionsService';
 import CategoriesService from '../../services/CategoriesService';
+import { supabase } from '../../services/supabase';
 
 const AdminCreateQuestionPage = ({ onNavigate, questionData = null }) => {
   const [loading, setLoading] = useState(false);
@@ -16,6 +17,8 @@ const AdminCreateQuestionPage = ({ onNavigate, questionData = null }) => {
     explanation: '',
     imageUrl: ''
   });
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
 
   const isEditing = !!questionData;
 
@@ -55,6 +58,56 @@ const AdminCreateQuestionPage = ({ onNavigate, questionData = null }) => {
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleFileChange = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      // Validar tipo de archivo
+      if (!file.type.startsWith('image/')) {
+        alert('Por favor selecciona un archivo de imagen válido');
+        return;
+      }
+      
+      // Validar tamaño (máximo 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        alert('El archivo es demasiado grande. Máximo 5MB');
+        return;
+      }
+      
+      setSelectedFile(file);
+      setFormData(prev => ({ ...prev, imageUrl: '' })); // Limpiar URL si hay archivo
+    }
+  };
+
+  const uploadFile = async (file) => {
+    try {
+      setUploading(true);
+      
+      // Crear un nombre único para el archivo
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}.${fileExt}`;
+      const filePath = `questions/${fileName}`;
+      
+      // Subir archivo a Supabase Storage
+      const { data, error } = await supabase.storage
+        .from('images')
+        .upload(filePath, file);
+      
+      if (error) throw error;
+      
+      // Obtener URL pública
+      const { data: { publicUrl } } = supabase.storage
+        .from('images')
+        .getPublicUrl(filePath);
+      
+      return publicUrl;
+    } catch (error) {
+      console.error('Error subiendo archivo:', error);
+      throw error;
+    } finally {
+      setUploading(false);
+    }
   };
 
   const handleOptionChange = (index, value) => {
@@ -102,6 +155,13 @@ const AdminCreateQuestionPage = ({ onNavigate, questionData = null }) => {
     try {
       setLoading(true);
       
+      let imageUrl = formData.imageUrl.trim() || null;
+      
+      // Si hay un archivo seleccionado, subirlo primero
+      if (selectedFile) {
+        imageUrl = await uploadFile(selectedFile);
+      }
+      
       const questionPayload = {
         categoryId: formData.categoryId,
         type: formData.type,
@@ -111,8 +171,8 @@ const AdminCreateQuestionPage = ({ onNavigate, questionData = null }) => {
         correctAnswer: formData.correctAnswer,
         timeLimit: formData.timeLimit ? parseInt(formData.timeLimit) : null,
         explanation: formData.explanation.trim() || null,
-        imageUrl: formData.imageUrl.trim() || null,
-        createdBy: 'current-user-id' // TODO: Obtener del contexto de usuario
+        imageUrl: imageUrl,
+        createdBy: 'current-user-id' // Se manejará en el servicio
       };
 
       if (isEditing) {
@@ -529,7 +589,7 @@ const AdminCreateQuestionPage = ({ onNavigate, questionData = null }) => {
             />
           </div>
 
-          {/* URL de imagen */}
+          {/* Subida de imagen */}
           <div style={{ marginBottom: '32px' }}>
             <label style={{
               display: 'block',
@@ -538,13 +598,14 @@ const AdminCreateQuestionPage = ({ onNavigate, questionData = null }) => {
               color: safeColor('textPrimary'),
               marginBottom: '8px'
             }}>
-              URL de Imagen - Opcional
+              Imagen - Opcional
             </label>
+            
+            {/* Input de archivo */}
             <input
-              type="url"
-              value={formData.imageUrl}
-              onChange={(e) => handleInputChange('imageUrl', e.target.value)}
-              placeholder="https://ejemplo.com/imagen.jpg"
+              type="file"
+              accept="image/*"
+              onChange={handleFileChange}
               style={{
                 width: '100%',
                 padding: '12px',
@@ -552,9 +613,55 @@ const AdminCreateQuestionPage = ({ onNavigate, questionData = null }) => {
                 border: `1px solid ${safeColor('border')}`,
                 background: safeColor('dark'),
                 color: safeColor('textPrimary'),
-                fontSize: '1rem'
+                fontSize: '1rem',
+                marginBottom: '8px'
               }}
             />
+            
+            {/* Mostrar archivo seleccionado */}
+            {selectedFile && (
+              <div style={{
+                padding: '8px 12px',
+                background: safeColor('primary') + '20',
+                borderRadius: '6px',
+                fontSize: '0.9rem',
+                color: safeColor('primary'),
+                marginBottom: '8px'
+              }}>
+                📎 {selectedFile.name} ({(selectedFile.size / 1024 / 1024).toFixed(2)} MB)
+              </div>
+            )}
+            
+            {/* O URL como alternativa */}
+            <div style={{ marginTop: '12px' }}>
+              <label style={{
+                display: 'block',
+                fontSize: '0.9rem',
+                fontWeight: '500',
+                color: safeColor('textMuted'),
+                marginBottom: '4px'
+              }}>
+                O ingresa una URL:
+              </label>
+              <input
+                type="url"
+                value={formData.imageUrl}
+                onChange={(e) => {
+                  handleInputChange('imageUrl', e.target.value);
+                  if (e.target.value) setSelectedFile(null); // Limpiar archivo si hay URL
+                }}
+                placeholder="https://ejemplo.com/imagen.jpg"
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  borderRadius: '6px',
+                  border: `1px solid ${safeColor('border')}`,
+                  background: safeColor('dark'),
+                  color: safeColor('textPrimary'),
+                  fontSize: '0.9rem'
+                }}
+              />
+            </div>
           </div>
 
           {/* Botones de acción */}

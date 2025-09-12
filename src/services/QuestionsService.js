@@ -63,6 +63,9 @@ class QuestionsService {
     try {
       console.log('🔍 Creando nueva pregunta...');
       
+      // Obtener el usuario actual
+      const { data: { user } } = await supabase.auth.getUser();
+      
       const { data, error } = await supabase
         .from('questions')
         .insert({
@@ -74,7 +77,7 @@ class QuestionsService {
           time_limit: questionData.timeLimit,
           image_url: questionData.imageUrl,
           explanation: questionData.explanation,
-          created_by: questionData.createdBy
+          created_by: user?.id || questionData.createdBy || 'system'
         })
         .select()
         .single();
