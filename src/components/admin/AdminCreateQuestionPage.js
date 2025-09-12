@@ -43,15 +43,26 @@ const AdminCreateQuestionPage = ({ onNavigate, questionData = null }) => {
 
   const loadQuestionData = () => {
     if (questionData) {
+      console.log('🔍 Cargando datos de pregunta:', questionData);
+      
+      // Mapear tipos de Flutter a tipos de UI
+      const typeMapping = {
+        'multipleChoice': 'multiple_choice',
+        'trueFalse': 'true_false',
+        'freeText': 'free_text'
+      };
+      
+      const uiType = typeMapping[questionData.type] || questionData.type || 'multiple_choice';
+      
       setFormData({
         question: questionData.question || '',
-        type: questionData.type || 'multiple_choice',
+        type: uiType,
         categoryId: questionData.category_id || '',
-        options: questionData.options || ['', ''],
+        options: questionData.options || (uiType === 'true_false' ? ['Verdadero', 'Falso'] : ['', '']),
         correctAnswer: questionData.correct_answer || '',
         timeLimit: questionData.time_limit || '',
         explanation: questionData.explanation || '',
-        imageUrl: questionData.image_url || ''
+        imageUrl: questionData.imageUrl || questionData.image_url || ''
       });
     }
   };
