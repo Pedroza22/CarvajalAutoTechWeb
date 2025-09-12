@@ -183,10 +183,14 @@ const AdminCreateQuestionPage = ({ onNavigate, questionData = null }) => {
         alert('Pregunta creada exitosamente');
       }
       
-      onNavigate('admin-questions');
+      // Navegar después de mostrar el mensaje
+      setTimeout(() => {
+        onNavigate('admin-questions');
+      }, 100);
+      
     } catch (error) {
       console.error('❌ Error guardando pregunta:', error);
-      alert('Error al guardar la pregunta');
+      alert('Error al guardar la pregunta: ' + (error.message || 'Error desconocido'));
     } finally {
       setLoading(false);
     }
