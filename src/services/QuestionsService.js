@@ -66,34 +66,12 @@ class QuestionsService {
       // Obtener el usuario actual
       const { data: { user } } = await supabase.auth.getUser();
       
-      // Primero necesitamos crear o obtener un quiz para esta pregunta
-      let quizId = questionData.quizId;
-      
-      if (!quizId) {
-        // Crear un quiz temporal para esta pregunta
-        const { data: quizData, error: quizError } = await supabase
-          .from('quizzes')
-          .insert({
-            title: `Quiz para: ${questionData.question.substring(0, 50)}...`,
-            description: 'Quiz generado automáticamente',
-            status: 'draft',
-            created_by: user?.id
-          })
-          .select()
-          .single();
-          
-        if (quizError) {
-          console.error('❌ Error creando quiz:', quizError);
-          throw quizError;
-        }
-        
-        quizId = quizData.id;
-      }
-
       const { data, error } = await supabase
         .from('questions')
         .insert({
-          quiz_id: quizId,
+          quiz_id: null, // No requerimos quiz
+          category_id: questionData.categoryId,
+          created_by: user?.id,
           question_type: questionData.type,
           question_text: questionData.question,
           points: questionData.points || 1.00,
