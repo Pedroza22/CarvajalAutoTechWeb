@@ -47,7 +47,9 @@ class StatisticsService {
         recentActivity: this.formatRecentActivity(trends),
         categoryStats,
         difficultyStats: this.formatDifficultyStats(categoryStats),
-        monthlyStats: this.formatMonthlyStats(trends)
+        monthlyStats: this.formatMonthlyStats(trends),
+        weeklyActivity: await this.getWeeklyActivity(),
+        weeklyStats: await this.getWeeklyStats()
       };
 
       console.log('✅ Estadísticas cargadas:', statistics);
@@ -630,6 +632,95 @@ class StatisticsService {
     } catch (error) {
       console.error('Error obteniendo estadísticas del estudiante:', error);
       return null;
+    }
+  }
+
+  /**
+   * Obtiene actividad semanal por día
+   */
+  async getWeeklyActivity() {
+    try {
+      const today = new Date();
+      const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+      
+      const { data, error } = await supabase
+        .from('quiz_attempts')
+        .select('created_at')
+        .gte('created_at', weekAgo.toISOString())
+        .lte('created_at', today.toISOString());
+
+      if (error) throw error;
+
+      // Agrupar por día de la semana
+      const dayCounts = {};
+      const dayNames = ['D', 'L', 'M', 'X', 'J', 'V', 'S'];
+      
+      data?.forEach(attempt => {
+        const date = new Date(attempt.created_at);
+        const dayOfWeek = date.getDay(); // 0 = Domingo, 1 = Lunes, etc.
+        const dayName = dayNames[dayOfWeek];
+        dayCounts[dayName] = (dayCounts[dayName] || 0) + 1;
+      });
+
+      // Crear array con todos los días de la semana
+      return dayNames.map(day => ({
+        day,
+        count: dayCounts[day] || 0
+      }));
+    } catch (error) {
+      console.error('Error obteniendo actividad semanal:', error);
+      // Retornar datos de ejemplo si hay error
+      return [
+        { day: 'L', count: 0 },
+        { day: 'M', count: 0 },
+        { day: 'X', count: 0 },
+        { day: 'J', count: 0 },
+        { day: 'V', count: 0 },
+        { day: 'S', count: 0 },
+        { day: 'D', count: 0 }
+      ];
+    }
+  }
+
+  /**
+   * Obtiene estadísticas resumidas de la semana
+   */
+  async getWeeklyStats() {
+    try {
+      const today = new Date();
+      const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+      
+      const { data, error } = await supabase
+        .from('quiz_attempts')
+        .select('created_at')
+        .gte('created_at', weekAgo.toISOString())
+        .lte('created_at', today.toISOString());
+
+      if (error) throw error;
+
+      const total = data?.length || 0;
+      const average = total > 0 ? Math.round(total / 7) : 0;
+      const maximum = total > 0 ? Math.max(...Array.from({length: 7}, (_, i) => {
+        const dayStart = new Date(weekAgo.getTime() + i * 24 * 60 * 60 * 1000);
+        const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
+        return data?.filter(attempt => {
+          const attemptDate = new Date(attempt.created_at);
+          return attemptDate >= dayStart && attemptDate < dayEnd;
+        }).length || 0;
+      })) : 0;
+
+      return {
+        total,
+        average,
+        maximum
+      };
+    } catch (error) {
+      console.error('Error obteniendo estadísticas semanales:', error);
+      return {
+        total: 0,
+        average: 0,
+        maximum: 0
+      };
     }
   }
 }

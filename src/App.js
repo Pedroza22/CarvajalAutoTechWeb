@@ -172,10 +172,23 @@ function App() {
           setCurrentPage(page);
           setCurrentPageData(data);
         }} />}
+        {currentPage === 'students-list' && <AdminStudentsListPage onNavigate={(page, data) => {
+          setCurrentPage(page);
+          setCurrentPageData(data);
+        }} />}
         {currentPage === 'admin-student-detail' && (
           <AdminStudentDetailPage 
             student={currentPageData?.student} 
             onBack={() => setCurrentPage('admin-students')} 
+          />
+        )}
+        {currentPage === 'student-detail' && (
+          <AdminStudentDetailPage 
+            student={currentPageData?.student} 
+            onNavigate={(page, data) => {
+              setCurrentPage(page);
+              setCurrentPageData(data);
+            }}
           />
         )}
         {currentPage === 'admin-create-question' && (
@@ -184,7 +197,7 @@ function App() {
         {currentPage === 'admin-connection-test' && (
           <SupabaseConnectionTest />
         )}
-        {!currentPage.startsWith('admin-') && (
+        {!currentPage.startsWith('admin-') && !['students-list', 'student-detail', 'categories', 'questions', 'statistics'].includes(currentPage) && (
           <div style={{ padding: 20, color: getColor('textMuted') }}>
             Página no encontrada: {currentPage}
             <br />

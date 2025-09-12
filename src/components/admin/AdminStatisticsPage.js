@@ -385,7 +385,7 @@ const AdminStatisticsPage = ({ onNavigate }) => {
           </div>
         </div>
 
-        {/* Gráfico simple */}
+        {/* Gráfico funcional */}
         <div style={{
           background: safeColor('dark'),
           borderRadius: '12px',
@@ -397,31 +397,55 @@ const AdminStatisticsPage = ({ onNavigate }) => {
           justifyContent: 'space-around',
           border: `1px solid ${safeColor('border')}33`
         }}>
-          {[1, 2, 3, 4, 5, 6, 7].map((day, index) => (
-            <div key={day} style={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: '8px'
-            }}>
-              <div style={{
-                width: '20px',
-                height: `${Math.max(20, Math.random() * 80 + 20)}px`,
-                background: safeColor('primary'),
-                borderRadius: '4px 4px 0 0',
-                transition: 'all 0.3s'
-              }} />
-              <span style={{
-                fontSize: '0.7rem',
-                color: safeColor('textMuted')
+          {statistics.weeklyActivity && statistics.weeklyActivity.length > 0 ? (
+            statistics.weeklyActivity.map((dayData, index) => (
+              <div key={index} style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '8px'
               }}>
-                {['L', 'M', 'X', 'J', 'V', 'S', 'D'][index]}
-              </span>
-            </div>
-          ))}
+                <div style={{
+                  width: '20px',
+                  height: `${Math.max(20, (dayData.count / Math.max(...statistics.weeklyActivity.map(d => d.count))) * 80 + 20)}px`,
+                  background: safeColor('primary'),
+                  borderRadius: '4px 4px 0 0',
+                  transition: 'all 0.3s'
+                }} />
+                <span style={{
+                  fontSize: '0.7rem',
+                  color: safeColor('textMuted')
+                }}>
+                  {dayData.day}
+                </span>
+              </div>
+            ))
+          ) : (
+            [1, 2, 3, 4, 5, 6, 7].map((day, index) => (
+              <div key={day} style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '8px'
+              }}>
+                <div style={{
+                  width: '20px',
+                  height: '20px',
+                  background: safeColor('border'),
+                  borderRadius: '4px 4px 0 0'
+                }} />
+                <span style={{
+                  fontSize: '0.7rem',
+                  color: safeColor('textMuted')
+                }}>
+                  {['L', 'M', 'X', 'J', 'V', 'S', 'D'][index]}
+                </span>
+              </div>
+            ))
+          )}
         </div>
 
-        {/* Estadísticas resumidas */}
+        {/* Estadísticas resumidas funcionales */}
         <div style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(3, 1fr)',
@@ -444,7 +468,7 @@ const AdminStatisticsPage = ({ onNavigate }) => {
               color: safeColor('success'),
               marginBottom: '4px'
             }}>
-              {Math.floor(Math.random() * 10) + 1}
+              {statistics.weeklyStats?.average || 0}
             </div>
             <div style={{
               fontSize: '0.8rem',
@@ -471,7 +495,7 @@ const AdminStatisticsPage = ({ onNavigate }) => {
               color: safeColor('warning'),
               marginBottom: '4px'
             }}>
-              {Math.floor(Math.random() * 20) + 5}
+              {statistics.weeklyStats?.maximum || 0}
             </div>
             <div style={{
               fontSize: '0.8rem',
@@ -498,7 +522,7 @@ const AdminStatisticsPage = ({ onNavigate }) => {
               color: safeColor('error'),
               marginBottom: '4px'
             }}>
-              {Math.floor(Math.random() * 50) + 10}
+              {statistics.weeklyStats?.total || 0}
             </div>
             <div style={{
               fontSize: '0.8rem',

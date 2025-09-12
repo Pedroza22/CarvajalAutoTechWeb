@@ -58,7 +58,6 @@ class CategoriesService {
         .insert({
           name: categoryData.name,
           description: categoryData.description,
-          color: categoryData.color || '#6366f1',
           icon: categoryData.icon,
           created_by: categoryData.createdBy
         })
@@ -88,7 +87,6 @@ class CategoriesService {
         .update({
           name: categoryData.name,
           description: categoryData.description,
-          color: categoryData.color,
           icon: categoryData.icon,
           is_active: categoryData.isActive
         })
