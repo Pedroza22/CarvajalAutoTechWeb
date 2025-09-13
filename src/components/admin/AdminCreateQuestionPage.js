@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { getColor } from '../../utils/constants';
 import QuestionsService from '../../services/QuestionsService';
 import CategoriesService from '../../services/CategoriesService';
+import StorageService from '../../services/StorageService';
 import supabase from '../../config/supabase';
 
 const AdminCreateQuestionPage = ({ onNavigate, questionData = null }) => {
@@ -93,31 +94,27 @@ const AdminCreateQuestionPage = ({ onNavigate, questionData = null }) => {
 
   const uploadFile = async (file) => {
     try {
-      // setUploading(true);
+      console.log('📤 Iniciando subida de archivo...');
       
-      // Crear un nombre único para el archivo
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Date.now()}.${fileExt}`;
-      const filePath = `questions/${fileName}`;
+      // Usar el servicio de storage
+      const result = await StorageService.uploadFile(file, 'images', 'questions');
       
-      // Subir archivo a Supabase Storage
-      const { error } = await supabase.client.storage
-        .from('images')
-        .upload(filePath, file);
+      console.log('✅ Archivo subido exitosamente:', result);
+      return result.publicUrl;
       
-      if (error) throw error;
-      
-      // Obtener URL pública
-      const { data: { publicUrl } } = supabase.client.storage
-        .from('images')
-        .getPublicUrl(filePath);
-      
-      return publicUrl;
     } catch (error) {
-      console.error('Error subiendo archivo:', error);
-      throw error;
-    } finally {
-      // setUploading(false);
+      console.error('❌ Error subiendo archivo:', error);
+      
+      // Mostrar mensaje de error más específico
+      if (error.message.includes('Bucket not found')) {
+        throw new Error('El bucket de imágenes no existe. Por favor contacta al administrador para configurar el almacenamiento.');
+      } else if (error.message.includes('El archivo es demasiado grande')) {
+        throw new Error('El archivo es demasiado grande. Máximo 5MB permitido.');
+      } else if (error.message.includes('Solo se permiten archivos de imagen')) {
+        throw new Error('Solo se permiten archivos de imagen (JPG, PNG, GIF, WebP).');
+      } else {
+        throw new Error(`Error subiendo archivo: ${error.message}`);
+      }
     }
   };
 
@@ -170,7 +167,15 @@ const AdminCreateQuestionPage = ({ onNavigate, questionData = null }) => {
       
       // Si hay un archivo seleccionado, subirlo primero
       if (selectedFile) {
-        imageUrl = await uploadFile(selectedFile);
+        try {
+          imageUrl = await uploadFile(selectedFile);
+          console.log('✅ Imagen subida exitosamente:', imageUrl);
+        } catch (uploadError) {
+          console.error('❌ Error subiendo imagen:', uploadError);
+          window.alert(`Error subiendo imagen: ${uploadError.message}`);
+          setLoading(false);
+          return;
+        }
       }
       
       const questionPayload = {

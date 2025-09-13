@@ -1,0 +1,29 @@
+[build]
+  # Directorio de publicación
+  publish = "."
+  
+  # Comando de build (no necesario para archivos estáticos)
+  command = "echo 'No build needed for static files'"
+
+[[redirects]]
+  # Redirigir la raíz a las políticas de privacidad
+  from = "/"
+  to = "/politicas-privacidad.html"
+  status = 200
+
+[[headers]]
+  # Headers para todas las rutas
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-XSS-Protection = "1; mode=block"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Content-Security-Policy = "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'"
+
+[[headers]]
+  # Headers específicos para archivos HTML
+  for = "/*.html"
+  [headers.values]
+    Cache-Control = "public, max-age=3600"
+    Content-Type = "text/html; charset=utf-8"
