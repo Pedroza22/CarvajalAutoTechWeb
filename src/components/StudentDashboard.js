@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { AppConstants } from '../utils/constants';
 import CustomButton from './CustomButton';
 import StudentStatsCard from './StudentStatsCard';
@@ -483,45 +483,50 @@ const StudentDashboard = ({
       </div>
 
       {/* Footer con políticas de privacidad */}
-      <div style={{
-        padding: '16px 24px',
-        borderTop: `1px solid ${safeColor('border')}`,
-        background: safeColor('dark'),
-        textAlign: 'center',
-        fontSize: '0.85rem',
-        color: safeColor('textSecondary'),
-        marginTop: '32px'
-      }}>
-        <p style={{ margin: '0 0 8px 0' }}>
-          © 2025 CarvajalAutoTech. Todos los derechos reservados.
-        </p>
-        <p style={{ margin: '0' }}>
-          <a 
-            href="#" 
-            onClick={(e) => {
-              e.preventDefault();
-              window.location.hash = '#privacy-policy';
-              window.dispatchEvent(new HashChangeEvent('hashchange'));
-            }}
-            style={{
-              color: safeColor('primary'),
-              textDecoration: 'none',
-              borderBottom: `1px solid ${safeColor('primary')}30`,
-              transition: 'all 0.3s ease'
-            }}
-            onMouseEnter={(e) => {
-              e.target.style.borderBottomColor = safeColor('primary');
-              e.target.style.color = safeColor('primary');
-            }}
-            onMouseLeave={(e) => {
-              e.target.style.borderBottomColor = safeColor('primary') + '30';
-              e.target.style.color = safeColor('primary');
-            }}
-          >
-            Políticas de Privacidad
-          </a>
-        </p>
-      </div>
+      {useMemo(() => {
+        console.log('🔄 Renderizando footer de StudentDashboard');
+        return (
+          <div style={{
+            padding: '16px 24px',
+            borderTop: `1px solid ${safeColor('border')}`,
+            background: safeColor('dark'),
+            textAlign: 'center',
+            fontSize: '0.85rem',
+            color: safeColor('textSecondary'),
+            marginTop: '32px'
+          }}>
+            <p style={{ margin: '0 0 8px 0' }}>
+              © 2025 CarvajalAutoTech. Todos los derechos reservados.
+            </p>
+            <p style={{ margin: '0' }}>
+              <a 
+                href="#" 
+                onClick={(e) => {
+                  e.preventDefault();
+                  window.location.hash = '#privacy-policy';
+                  window.dispatchEvent(new HashChangeEvent('hashchange'));
+                }}
+                style={{
+                  color: safeColor('primary'),
+                  textDecoration: 'none',
+                  borderBottom: `1px solid ${safeColor('primary')}30`,
+                  transition: 'all 0.3s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.borderBottomColor = safeColor('primary');
+                  e.target.style.color = safeColor('primary');
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.borderBottomColor = safeColor('primary') + '30';
+                  e.target.style.color = safeColor('primary');
+                }}
+              >
+                Políticas de Privacidad
+              </a>
+            </p>
+          </div>
+        );
+      }, [safeColor])}
     </div>
   );
 };

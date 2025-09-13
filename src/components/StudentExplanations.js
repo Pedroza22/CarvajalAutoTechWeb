@@ -8,6 +8,7 @@ const StudentExplanations = ({ studentId }) => {
   const [error, setError] = useState(null);
 
   console.log('🔍 StudentExplanations recibió studentId:', studentId);
+  console.log('🔄 StudentExplanations renderizando...');
 
   const loadExplanations = useCallback(async () => {
     try {

@@ -82,7 +82,27 @@ FROM information_schema.columns
 WHERE table_name = 'student_explanations' 
 ORDER BY ordinal_position;
 
--- 9. Insertar datos de prueba (opcional)
+-- 9. Crear bucket para imágenes de preguntas (igual que en Flutter)
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES (
+  'question_images',
+  'question_images', 
+  true,
+  5242880, -- 5MB
+  ARRAY['image/jpeg', 'image/png', 'image/gif', 'image/webp']
+) ON CONFLICT (id) DO NOTHING;
+
+-- 10. Crear política para el bucket de imágenes
+CREATE POLICY "Anyone can view question images" ON storage.objects
+  FOR SELECT USING (bucket_id = 'question_images');
+
+CREATE POLICY "Authenticated users can upload question images" ON storage.objects
+  FOR INSERT WITH CHECK (
+    bucket_id = 'question_images' 
+    AND auth.role() = 'authenticated'
+  );
+
+-- 11. Insertar datos de prueba (opcional)
 -- INSERT INTO student_explanations (student_id, category_id, category_name, explanations, sent_by)
 -- VALUES (
 --   '9876310d-0577-4c09-b75f-0bc936e5c7e3', -- ID del estudiante de prueba

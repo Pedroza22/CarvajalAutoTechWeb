@@ -2,7 +2,7 @@ import { supabase } from './supabase';
 
 class StorageService {
   // Verificar si el bucket existe
-  async checkBucketExists(bucketName = 'images') {
+  async checkBucketExists(bucketName = 'question_images') {
     try {
       console.log(`🔍 Verificando si el bucket '${bucketName}' existe...`);
       
@@ -24,7 +24,7 @@ class StorageService {
   }
 
   // Crear bucket si no existe
-  async createBucketIfNotExists(bucketName = 'images') {
+  async createBucketIfNotExists(bucketName = 'question_images') {
     try {
       const exists = await this.checkBucketExists(bucketName);
       
@@ -47,7 +47,7 @@ class StorageService {
   }
 
   // Subir archivo al storage
-  async uploadFile(file, bucketName = 'images', folder = 'questions') {
+  async uploadFile(file, bucketName = 'question_images', folder = '') {
     try {
       console.log('📤 Subiendo archivo...', {
         fileName: file.name,

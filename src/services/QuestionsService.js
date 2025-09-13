@@ -97,9 +97,9 @@ class QuestionsService {
         created_by: user?.id
       };
 
-      // Solo agregar imageUrl si existe (como en Flutter)
+      // Solo agregar image_url si existe (como en Flutter)
       if (questionData.imageUrl) {
-        insertData.imageUrl = questionData.imageUrl;
+        insertData.image_url = questionData.imageUrl;
       }
 
       const { data, error } = await supabase

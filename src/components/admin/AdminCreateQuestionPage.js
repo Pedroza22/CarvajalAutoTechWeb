@@ -2,10 +2,10 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { getColor } from '../../utils/constants';
 import QuestionsService from '../../services/QuestionsService';
 import CategoriesService from '../../services/CategoriesService';
-import StorageService from '../../services/StorageService';
-import supabase from '../../config/supabase';
+import { supabase } from '../../services/supabase';
 
 const AdminCreateQuestionPage = ({ onNavigate, questionData = null }) => {
+  console.log('🔍 AdminCreateQuestionPage - supabase disponible:', !!supabase);
   const [loading, setLoading] = useState(false);
   const [categories, setCategories] = useState([]);
   const [formData, setFormData] = useState({
@@ -68,11 +68,11 @@ const AdminCreateQuestionPage = ({ onNavigate, questionData = null }) => {
     }
   }, [isEditing, loadCategories, loadQuestionData]);
 
-  const handleInputChange = (field, value) => {
+  const handleInputChange = useCallback((field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-  };
+  }, []);
 
-  const handleFileChange = (event) => {
+  const handleFileChange = useCallback((event) => {
     const file = event.target.files[0];
     if (file) {
       // Validar tipo de archivo
@@ -90,9 +90,9 @@ const AdminCreateQuestionPage = ({ onNavigate, questionData = null }) => {
       setSelectedFile(file);
       setFormData(prev => ({ ...prev, imageUrl: '' })); // Limpiar URL si hay archivo
     }
-  };
+  }, []);
 
-  const uploadFile = async (file) => {
+  const uploadFile = useCallback(async (file) => {
     try {
       setUploading(true);
       console.log('📤 Iniciando subida de archivo...', {
@@ -100,6 +100,11 @@ const AdminCreateQuestionPage = ({ onNavigate, questionData = null }) => {
         fileSize: file.size,
         fileType: file.type
       });
+      
+      console.log('🔍 Verificando supabase:', supabase);
+      if (!supabase) {
+        throw new Error('Supabase no está disponible');
+      }
       
       // Crear nombre único para el archivo (igual que en Flutter)
       const fileName = `${Date.now()}${file.name.substring(file.name.lastIndexOf('.'))}`;
@@ -113,8 +118,8 @@ const AdminCreateQuestionPage = ({ onNavigate, questionData = null }) => {
       
       // Subir archivo a Supabase Storage (igual que en Flutter)
       const { error: uploadError } = await supabase.storage
-        .from('images')
-        .upload(filePath, file, {
+        .from('question_images')
+        .upload(fileName, file, {
           cacheControl: '3600',
           upsert: false
         });
@@ -126,8 +131,8 @@ const AdminCreateQuestionPage = ({ onNavigate, questionData = null }) => {
       
       // Obtener URL pública (igual que en Flutter)
       const { data: { publicUrl } } = supabase.storage
-        .from('images')
-        .getPublicUrl(filePath);
+        .from('question_images')
+        .getPublicUrl(fileName);
       
       console.log('✅ Archivo subido exitosamente:', {
         fileName: fileName,
@@ -152,21 +157,21 @@ const AdminCreateQuestionPage = ({ onNavigate, questionData = null }) => {
     } finally {
       setUploading(false);
     }
-  };
+  }, []);
 
-  const handleOptionChange = (index, value) => {
+  const handleOptionChange = useCallback((index, value) => {
     const newOptions = [...formData.options];
     newOptions[index] = value;
     setFormData(prev => ({ ...prev, options: newOptions }));
-  };
+  }, [formData.options]);
 
-  const addOption = () => {
+  const addOption = useCallback(() => {
     if (formData.options.length < 6) {
       setFormData(prev => ({ ...prev, options: [...prev.options, ''] }));
     }
-  };
+  }, [formData.options.length]);
 
-  const removeOption = (index) => {
+  const removeOption = useCallback((index) => {
     if (formData.options.length > 2) {
       const newOptions = formData.options.filter((_, i) => i !== index);
       setFormData(prev => ({ ...prev, options: newOptions }));
@@ -176,7 +181,7 @@ const AdminCreateQuestionPage = ({ onNavigate, questionData = null }) => {
         setFormData(prev => ({ ...prev, correctAnswer: '' }));
       }
     }
-  };
+  }, [formData.options, formData.correctAnswer]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -213,9 +218,6 @@ const AdminCreateQuestionPage = ({ onNavigate, questionData = null }) => {
           setLoading(false);
           return;
         }
-      } else if (formData.imageUrl) {
-        // Si no hay archivo pero hay URL, usar la URL
-        imageUrl = formData.imageUrl.trim();
       }
       
       const questionPayload = {
@@ -809,38 +811,6 @@ const AdminCreateQuestionPage = ({ onNavigate, questionData = null }) => {
               </div>
             )}
             
-            {/* Separador y campo de URL - solo mostrar si no hay imagen */}
-            {!formData.imageUrl && !selectedFile && (
-              <>
-                <div style={{
-                  textAlign: 'center',
-                  margin: '16px 0',
-                  color: safeColor('textSecondary'),
-                  fontSize: '0.9rem'
-                }}>
-                  O ingresa una URL de imagen
-                </div>
-                
-                {/* Campo de URL */}
-                <input
-                  type="url"
-                  value={formData.imageUrl}
-                  onChange={(e) => handleInputChange('imageUrl', e.target.value)}
-                  placeholder="https://ejemplo.com/imagen.jpg"
-                  disabled={uploading}
-                  style={{
-                    width: '100%',
-                    padding: '12px',
-                    borderRadius: '8px',
-                    border: `1px solid ${safeColor('border')}`,
-                    background: uploading ? safeColor('border') : safeColor('dark'),
-                    color: safeColor('textPrimary'),
-                    fontSize: '1rem',
-                    opacity: uploading ? 0.6 : 1
-                  }}
-                />
-              </>
-            )}
           </div>
 
           {/* Botones de acción */}
