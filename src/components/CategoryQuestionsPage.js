@@ -709,6 +709,107 @@ const CategoryQuestionsPage = ({ category, user, onBack, onStartQuiz }) => {
                           )}
                         </div>
 
+                        {/* Imagen si está disponible - Antes de la pregunta */}
+                        {question.image_url && (
+                          <div style={{
+                            marginBottom: '20px',
+                            textAlign: 'center'
+                          }}>
+                            <div style={{
+                              position: 'relative',
+                              display: 'inline-block',
+                              cursor: 'pointer',
+                              borderRadius: '8px',
+                              overflow: 'hidden',
+                              border: `1px solid ${safeColor('border')}`,
+                              transition: 'all 0.3s ease'
+                            }}
+                            onClick={() => {
+                              // Crear modal para ampliar imagen
+                              const modal = document.createElement('div');
+                              modal.id = 'image-modal';
+                              modal.style.cssText = `
+                                position: fixed;
+                                top: 0;
+                                left: 0;
+                                width: 100%;
+                                height: 100%;
+                                background: rgba(0, 0, 0, 0.9);
+                                display: flex;
+                                justify-content: center;
+                                align-items: center;
+                                z-index: 10000;
+                                cursor: pointer;
+                              `;
+                              
+                              const img = document.createElement('img');
+                              img.src = question.image_url;
+                              img.style.cssText = `
+                                max-width: 90%;
+                                max-height: 90%;
+                                object-fit: contain;
+                                border-radius: 8px;
+                                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+                              `;
+                              
+                              const closeBtn = document.createElement('div');
+                              closeBtn.innerHTML = '✕';
+                              closeBtn.style.cssText = `
+                                position: absolute;
+                                top: 20px;
+                                right: 30px;
+                                color: white;
+                                font-size: 30px;
+                                cursor: pointer;
+                                background: rgba(0, 0, 0, 0.5);
+                                width: 40px;
+                                height: 40px;
+                                border-radius: 50%;
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                                transition: background 0.3s ease;
+                              `;
+                              closeBtn.onmouseover = () => closeBtn.style.background = 'rgba(255, 0, 0, 0.7)';
+                              closeBtn.onmouseout = () => closeBtn.style.background = 'rgba(0, 0, 0, 0.5)';
+                              
+                              modal.appendChild(img);
+                              modal.appendChild(closeBtn);
+                              document.body.appendChild(modal);
+                              
+                              const closeModal = () => {
+                                const existingModal = document.getElementById('image-modal');
+                                if (existingModal && existingModal.parentNode) {
+                                  existingModal.parentNode.removeChild(existingModal);
+                                }
+                              };
+                              
+                              closeBtn.onclick = closeModal;
+                              modal.onclick = closeModal;
+                              img.onclick = (e) => e.stopPropagation();
+                            }}
+                            onMouseEnter={(e) => {
+                              e.target.style.transform = 'scale(1.02)';
+                              e.target.style.boxShadow = `0 4px 15px ${safeColor('primary')}40`;
+                            }}
+                            onMouseLeave={(e) => {
+                              e.target.style.transform = 'scale(1)';
+                              e.target.style.boxShadow = 'none';
+                            }}>
+                              <img
+                                src={question.image_url}
+                                alt="Imagen de la pregunta"
+                                style={{
+                                  maxWidth: '100%',
+                                  maxHeight: '200px',
+                                  display: 'block',
+                                  transition: 'all 0.3s ease'
+                                }}
+                              />
+                            </div>
+                          </div>
+                        )}
+
                         {/* Pregunta */}
                         <h4 style={{
                           fontSize: '1.1rem',
@@ -831,24 +932,6 @@ const CategoryQuestionsPage = ({ category, user, onBack, onStartQuiz }) => {
                           </div>
                         )}
 
-                        {/* Imagen si está disponible */}
-                        {question.image_url && (
-                          <div style={{
-                            marginTop: '20px',
-                            textAlign: 'center'
-                          }}>
-                            <img
-                              src={question.image_url}
-                              alt="Imagen de la pregunta"
-                              style={{
-                                maxWidth: '100%',
-                                maxHeight: '200px',
-                                borderRadius: '8px',
-                                border: `1px solid ${safeColor('border')}`
-                              }}
-                            />
-                          </div>
-                        )}
 
                         {/* Explicación - Solo se muestra después de que el admin publique resultados */}
                         {question.explanation && showResults && (
@@ -888,38 +971,68 @@ const CategoryQuestionsPage = ({ category, user, onBack, onStartQuiz }) => {
                 justifyContent: 'space-between',
                 alignItems: 'center',
                 marginTop: '24px',
-                padding: '16px',
+                padding: '12px',
                 background: safeColor('cardBg'),
-                borderRadius: '12px',
+                borderRadius: '8px',
                 border: `1px solid ${safeColor('border')}33`
               }}>
-                <CustomButton
-                  text="← Anterior"
+                <button
                   onClick={previousQuestion}
                   disabled={currentQuestionIndex === 0}
-                  variant="outline"
                   style={{
-                    fontSize: '0.9rem',
-                    padding: '8px 16px'
+                    background: currentQuestionIndex === 0 ? safeColor('border') : safeColor('primary'),
+                    color: currentQuestionIndex === 0 ? safeColor('textMuted') : 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    padding: '6px 10px',
+                    fontSize: '14px',
+                    cursor: currentQuestionIndex === 0 ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.2s ease',
+                    opacity: currentQuestionIndex === 0 ? 0.5 : 1
                   }}
-                />
+                  onMouseEnter={(e) => {
+                    if (currentQuestionIndex > 0) {
+                      e.target.style.background = safeColor('primaryHover');
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (currentQuestionIndex > 0) {
+                      e.target.style.background = safeColor('primary');
+                    }
+                  }}
+                >
+                  ←
+                </button>
                 
                 <div style={{
-                  fontSize: '0.9rem',
-                  color: safeColor('textMuted')
+                  fontSize: '0.8rem',
+                  color: safeColor('textMuted'),
+                  fontWeight: '500'
                 }}>
-                  {currentQuestionIndex + 1} de {questions.length}
+                  {currentQuestionIndex + 1} / {questions.length}
                 </div>
                 
-                <CustomButton
-                  text={currentQuestionIndex === questions.length - 1 ? "Finalizar" : "Siguiente →"}
+                <button
                   onClick={currentQuestionIndex === questions.length - 1 ? handleSubmitQuiz : nextQuestion}
-                  disabled={false} // Permitir finalizar siempre, incluso sin respuesta
                   style={{
-                    fontSize: '0.9rem',
-                    padding: '8px 16px'
+                    background: currentQuestionIndex === questions.length - 1 ? safeColor('success') : safeColor('primary'),
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    padding: '6px 10px',
+                    fontSize: '14px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease'
                   }}
-                />
+                  onMouseEnter={(e) => {
+                    e.target.style.background = currentQuestionIndex === questions.length - 1 ? safeColor('successHover') : safeColor('primaryHover');
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.background = currentQuestionIndex === questions.length - 1 ? safeColor('success') : safeColor('primary');
+                  }}
+                >
+                  {currentQuestionIndex === questions.length - 1 ? "✓" : "→"}
+                </button>
               </div>
             </div>
           )}
