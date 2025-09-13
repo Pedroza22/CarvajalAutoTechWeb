@@ -144,9 +144,9 @@ class QuestionsService {
         explanation: questionData.explanation
       };
 
-      // Solo agregar imageUrl si existe (como en Flutter)
+      // Solo agregar image_url si existe (como en Flutter)
       if (questionData.imageUrl) {
-        updateData.imageUrl = questionData.imageUrl;
+        updateData.image_url = questionData.imageUrl;
       }
       
       const { data, error } = await supabase
