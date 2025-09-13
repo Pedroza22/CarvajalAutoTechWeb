@@ -348,7 +348,8 @@ const AdminStatisticsPage = ({ onNavigate }) => {
         borderRadius: '16px',
         padding: '24px',
         border: `1px solid ${safeColor('border')}`,
-        marginBottom: '32px'
+        marginBottom: '32px',
+        overflow: 'hidden'
       }}>
         <h3 style={{
           fontSize: '1.3rem',
@@ -385,7 +386,7 @@ const AdminStatisticsPage = ({ onNavigate }) => {
           </div>
         </div>
 
-        {/* Gráfico funcional */}
+        {/* Gráfico de puntos */}
         <div style={{
           background: safeColor('dark'),
           borderRadius: '12px',
@@ -395,31 +396,98 @@ const AdminStatisticsPage = ({ onNavigate }) => {
           display: 'flex',
           alignItems: 'end',
           justifyContent: 'space-around',
-          border: `1px solid ${safeColor('border')}33`
+          border: `1px solid ${safeColor('border')}33`,
+          overflow: 'hidden',
+          position: 'relative'
         }}>
           {statistics.weeklyActivity && statistics.weeklyActivity.length > 0 ? (
-            statistics.weeklyActivity.map((dayData, index) => (
-              <div key={index} style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: '8px'
-              }}>
-                <div style={{
-                  width: '20px',
-                  height: `${Math.max(20, (dayData.count / Math.max(...statistics.weeklyActivity.map(d => d.count))) * 80 + 20)}px`,
-                  background: safeColor('primary'),
-                  borderRadius: '4px 4px 0 0',
-                  transition: 'all 0.3s'
-                }} />
-                <span style={{
-                  fontSize: '0.7rem',
-                  color: safeColor('textMuted')
-                }}>
-                  {dayData.day}
-                </span>
-              </div>
-            ))
+            statistics.weeklyActivity.map((dayData, index) => {
+              const maxValue = Math.max(...statistics.weeklyActivity.map(d => d.count));
+              const normalizedHeight = maxValue > 0 ? (dayData.count / maxValue) * 60 + 20 : 20;
+              const pointSize = Math.max(8, Math.min(16, normalizedHeight / 4));
+              
+              return (
+                <div 
+                  key={index} 
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: '8px',
+                    position: 'relative',
+                    cursor: 'pointer'
+                  }}
+                  onMouseEnter={(e) => {
+                    const tooltip = e.currentTarget.querySelector('.point-tooltip');
+                    if (tooltip) tooltip.style.opacity = '1';
+                  }}
+                  onMouseLeave={(e) => {
+                    const tooltip = e.currentTarget.querySelector('.point-tooltip');
+                    if (tooltip) tooltip.style.opacity = '0';
+                  }}
+                >
+                  {/* Línea de conexión (opcional) */}
+                  {index < statistics.weeklyActivity.length - 1 && (
+                    <div style={{
+                      position: 'absolute',
+                      top: `${60 - normalizedHeight + pointSize/2}px`,
+                      left: '50%',
+                      width: '100%',
+                      height: '2px',
+                      background: safeColor('primary'),
+                      opacity: 0.3,
+                      zIndex: 1
+                    }} />
+                  )}
+                  
+                  {/* Punto principal */}
+                  <div style={{
+                    width: `${pointSize}px`,
+                    height: `${pointSize}px`,
+                    background: safeColor('primary'),
+                    borderRadius: '50%',
+                    transition: 'all 0.3s ease',
+                    position: 'relative',
+                    zIndex: 2,
+                    boxShadow: `0 2px 8px ${safeColor('primary')}40`,
+                    transform: `translateY(${60 - normalizedHeight}px)`
+                  }} />
+                  
+                  {/* Valor del punto (tooltip) */}
+                  <div 
+                    className="point-tooltip"
+                    style={{
+                      position: 'absolute',
+                      top: `${60 - normalizedHeight - 25}px`,
+                      left: '50%',
+                      transform: 'translateX(-50%)',
+                      background: safeColor('primary'),
+                      color: 'white',
+                      padding: '2px 6px',
+                      borderRadius: '4px',
+                      fontSize: '0.65rem',
+                      fontWeight: '600',
+                      opacity: 0,
+                      transition: 'opacity 0.3s ease',
+                      zIndex: 3,
+                      whiteSpace: 'nowrap',
+                      pointerEvents: 'none'
+                    }}
+                  >
+                    {dayData.count}
+                  </div>
+                  
+                  {/* Etiqueta del día */}
+                  <span style={{
+                    fontSize: '0.7rem',
+                    color: safeColor('textMuted'),
+                    marginTop: '8px'
+                  }}>
+                    {dayData.day}
+                  </span>
+                </div>
+              );
+            })
           ) : (
             [1, 2, 3, 4, 5, 6, 7].map((day, index) => (
               <div key={day} style={{
@@ -429,10 +497,11 @@ const AdminStatisticsPage = ({ onNavigate }) => {
                 gap: '8px'
               }}>
                 <div style={{
-                  width: '20px',
-                  height: '20px',
+                  width: '12px',
+                  height: '12px',
                   background: safeColor('border'),
-                  borderRadius: '4px 4px 0 0'
+                  borderRadius: '50%',
+                  opacity: 0.5
                 }} />
                 <span style={{
                   fontSize: '0.7rem',
