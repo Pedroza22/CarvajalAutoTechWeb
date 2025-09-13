@@ -15,6 +15,8 @@ const CategoryQuestionsPage = ({ category, user, onBack, onStartQuiz }) => {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [timeLeft, setTimeLeft] = useState(null);
   const [timerActive, setTimerActive] = useState(false);
+  const [quizPaused, setQuizPaused] = useState(false);
+  const [quizStartTime, setQuizStartTime] = useState(null);
   const [stats, setStats] = useState({
     totalAnswers: 0,
     correctAnswers: 0,
@@ -53,17 +55,170 @@ const CategoryQuestionsPage = ({ category, user, onBack, onStartQuiz }) => {
 
   const handleStartQuiz = async () => {
     setQuizStarted(true);
+    setQuizStartTime(new Date());
     await loadQuestions();
   };
 
-  const handleAnswerSelect = (questionId, answer) => {
+  const pauseQuiz = async () => {
+    try {
+      console.log('⏸️ Pausando quiz...');
+      
+      // Verificar que user y category estén disponibles
+      if (!user?.id || !category?.id) {
+        console.error('❌ User o category no disponible para pausar quiz');
+        alert('Error: No se puede pausar el quiz. Información de usuario o categoría no disponible.');
+        return;
+      }
+      
+      // Guardar progreso actual en localStorage
+      const quizProgress = {
+        studentId: user.id,
+        categoryId: category.id,
+        currentQuestionIndex,
+        studentAnswers,
+        startTime: quizStartTime,
+        pausedAt: new Date().toISOString(),
+        questionsCount: questions?.length || 0
+      };
+      
+      localStorage.setItem(`quiz_progress_${user.id}_${category.id}`, JSON.stringify(quizProgress));
+      console.log('💾 Progreso del quiz guardado en localStorage');
+      
+      setQuizPaused(true);
+      
+      // Mostrar mensaje de confirmación
+      alert('El quiz ha sido pausado. Tu progreso se ha guardado. Puedes regresar cuando quieras para continuar desde donde te quedaste.');
+      
+      // Regresar al dashboard
+      if (onBack) {
+        onBack();
+      }
+    } catch (error) {
+      console.error('❌ Error pausando quiz:', error);
+      alert('Error al pausar el quiz. Por favor, intenta de nuevo.');
+    }
+  };
+
+  const resumeQuiz = () => {
+    console.log('▶️ Reanudando quiz...');
+    setQuizPaused(false);
+    setQuizStarted(true);
+  };
+
+  const handleAnswerSelect = async (questionId, answer) => {
     setStudentAnswers(prev => ({
       ...prev,
       [questionId]: answer
     }));
     
-    // NO avanzar automáticamente - el usuario debe presionar "Siguiente" o esperar a que se acabe el tiempo
     console.log('✅ Respuesta seleccionada:', answer, 'para pregunta:', questionId);
+    
+    // Verificar que questions esté disponible
+    if (!questions || questions.length === 0) {
+      console.warn('⚠️ Questions no disponible, saltando modal de confirmación');
+      return;
+    }
+    
+    // Mostrar mensaje de confirmación después de seleccionar respuesta
+    const question = questions.find(q => q.id === questionId);
+    const questionNumber = questions.findIndex(q => q.id === questionId) + 1;
+    
+    const confirmed = await new Promise((resolve) => {
+      const modal = document.createElement('div');
+      modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.8);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 10000;
+      `;
+      
+      const content = document.createElement('div');
+      content.style.cssText = `
+        background: #1f2937;
+        border: 1px solid #4b5563;
+        border-radius: 12px;
+        padding: 24px;
+        max-width: 500px;
+        width: 90%;
+        text-align: center;
+        color: white;
+      `;
+      
+      content.innerHTML = `
+        <div style="font-size: 48px; margin-bottom: 16px;">✅</div>
+        <h3 style="margin: 0 0 16px 0; color: #ffffff; font-size: 1.5rem;">
+          Respuesta registrada
+        </h3>
+        <p style="margin: 0 0 24px 0; color: #d1d5db; font-size: 1rem;">
+          Has respondido la pregunta ${questionNumber} de ${questions.length}.<br>
+          ¿Qué deseas hacer ahora?
+        </p>
+        <div style="display: flex; gap: 12px; justify-content: center;">
+          <button id="continue-btn" style="
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background 0.2s;
+          ">
+            Continuar con la siguiente
+          </button>
+          <button id="pause-btn" style="
+            background: #f59e0b;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background 0.2s;
+          ">
+            Tomar un descanso
+          </button>
+        </div>
+      `;
+      
+      modal.appendChild(content);
+      document.body.appendChild(modal);
+      
+      // Event listeners para los botones
+      const continueBtn = content.querySelector('#continue-btn');
+      const pauseBtn = content.querySelector('#pause-btn');
+      
+      continueBtn.onclick = () => {
+        document.body.removeChild(modal);
+        resolve('continue');
+      };
+      
+      pauseBtn.onclick = () => {
+        document.body.removeChild(modal);
+        resolve('pause');
+      };
+      
+      continueBtn.onmouseenter = () => continueBtn.style.background = '#2563eb';
+      continueBtn.onmouseleave = () => continueBtn.style.background = '#3b82f6';
+      pauseBtn.onmouseenter = () => pauseBtn.style.background = '#d97706';
+      pauseBtn.onmouseleave = () => pauseBtn.style.background = '#f59e0b';
+    });
+    
+    if (confirmed === 'continue') {
+      // Avanzar a la siguiente pregunta si no es la última
+      if (currentQuestionIndex < questions.length - 1) {
+        setCurrentQuestionIndex(prev => prev + 1);
+      }
+    } else if (confirmed === 'pause') {
+      // Pausar el examen y guardar progreso
+      await pauseQuiz();
+    }
   };
 
   const handleSubmitQuiz = async () => {
@@ -71,8 +226,16 @@ const CategoryQuestionsPage = ({ category, user, onBack, onStartQuiz }) => {
       setSavingAnswers(true);
       console.log('🚀 Iniciando envío del quiz...');
       
-      // Guardar respuestas en la base de datos
-      await StudentCategoriesService.saveStudentAnswers(user.id, category.id, studentAnswers);
+      // Calcular tiempo total del quiz
+      const endTime = new Date();
+      const startTime = quizStartTime || new Date(); // Fallback si no hay tiempo de inicio
+      const totalTimeMs = endTime - startTime;
+      const totalTimeMinutes = Math.round(totalTimeMs / 60000); // Convertir a minutos
+      
+      console.log('⏱️ Tiempo total del quiz:', totalTimeMinutes, 'minutos');
+      
+      // Guardar respuestas en la base de datos con tiempo
+      await StudentCategoriesService.saveStudentAnswers(user.id, category.id, studentAnswers, totalTimeMinutes);
       
       // Calcular estadísticas
       const stats = await StudentCategoriesService.calculateQuizStats(user.id, category.id, studentAnswers);
@@ -80,6 +243,10 @@ const CategoryQuestionsPage = ({ category, user, onBack, onStartQuiz }) => {
       
       setQuizCompleted(true);
       setShowResults(true); // Mostrar resultados y explicaciones
+      
+      // Limpiar progreso guardado ya que el quiz está completado
+      localStorage.removeItem(`quiz_progress_${user.id}_${category.id}`);
+      
       console.log('✅ Quiz completado y guardado:', stats);
       
       // Notificar al admin que se completó un quiz (para actualizar estadísticas)
@@ -180,7 +347,44 @@ const CategoryQuestionsPage = ({ category, user, onBack, onStartQuiz }) => {
 
   useEffect(() => {
     loadCategoryData();
-  }, [loadCategoryData]);
+    
+    // Verificar si hay progreso guardado para reanudar
+    const checkSavedProgress = () => {
+      if (!user?.id || !category?.id) return;
+      
+      const savedProgress = localStorage.getItem(`quiz_progress_${user.id}_${category.id}`);
+      if (savedProgress) {
+        try {
+          const progress = JSON.parse(savedProgress);
+          console.log('🔍 Progreso guardado encontrado:', progress);
+          
+          // Preguntar al usuario si quiere reanudar
+          const categoryName = category?.name || 'esta categoría';
+          const shouldResume = window.confirm(
+            `Tienes un quiz pausado para "${categoryName}". ` +
+            `Progreso: ${progress.currentQuestionIndex + 1} de ${progress.questionsCount} preguntas. ` +
+            `¿Quieres continuar desde donde te quedaste?`
+          );
+          
+          if (shouldResume) {
+            setStudentAnswers(progress.studentAnswers || {});
+            setCurrentQuestionIndex(progress.currentQuestionIndex || 0);
+            setQuizStartTime(new Date(progress.startTime));
+            setQuizStarted(true);
+            loadQuestions();
+          } else {
+            // Limpiar progreso guardado si no quiere continuar
+            localStorage.removeItem(`quiz_progress_${user.id}_${category.id}`);
+          }
+        } catch (error) {
+          console.error('❌ Error cargando progreso guardado:', error);
+          localStorage.removeItem(`quiz_progress_${user.id}_${category.id}`);
+        }
+      }
+    };
+    
+    checkSavedProgress();
+  }, [loadCategoryData, user?.id, category?.id, category?.name]);
 
   // Effect para manejar el temporizador
   useEffect(() => {
