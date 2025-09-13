@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { getColor } from '../../utils/constants';
 import StudentsService from '../../services/StudentsService';
 import StudentCategoriesService from '../../services/StudentCategoriesService';
+import ExplanationsService from '../../services/ExplanationsService';
 
 const AdminStudentDetailPage = ({ onNavigate, student }) => {
   console.log('🔍 AdminStudentDetailPage recibió student:', student);
@@ -152,12 +153,25 @@ const AdminStudentDetailPage = ({ onNavigate, student }) => {
       
       console.log('✅ Usuario confirmó el envío');
       
-      // Simular envío (reemplazar con lógica real)
-      console.log('📧 Simulando envío...');
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Enviar explicaciones a la base de datos
+      console.log('📧 Enviando explicaciones a la base de datos...');
+      console.log('🔍 StudentData.id:', studentData.id);
+      console.log('🔍 Category.categoryId:', category.categoryId);
+      const result = await ExplanationsService.sendExplanationsToStudent(
+        studentData.id,
+        category.categoryId,
+        explanations,
+        category.categoryName
+      );
       
-      // Actualizar el estado local inmediatamente
-      console.log('🔄 Actualizando estado...');
+      if (!result.success) {
+        throw new Error(result.error || 'Error al enviar explicaciones');
+      }
+      
+      console.log('✅ Explicaciones enviadas exitosamente a la base de datos');
+      
+      // Actualizar el estado local
+      console.log('🔄 Actualizando estado local...');
       setStudentData(prev => {
         const updatedStats = prev.categoryStats.map(cat => 
           cat.categoryId === category.categoryId 
@@ -174,14 +188,8 @@ const AdminStudentDetailPage = ({ onNavigate, student }) => {
       
       console.log('✅ Estado actualizado');
       
-      // Mostrar mensaje de éxito con más información
-      alert(`✅ Explicaciones enviadas exitosamente para ${category.categoryName}\n\nEl estado se ha actualizado y el botón ahora muestra "Enviado".`);
-      
-      // Forzar re-render del componente para asegurar que se vea el cambio
-      setTimeout(() => {
-        console.log('🔄 Forzando re-render...');
-        setStudentData(prev => ({ ...prev }));
-      }, 100);
+      // Mostrar mensaje de éxito
+      alert(`✅ Explicaciones enviadas exitosamente para ${category.categoryName}\n\nLas explicaciones han sido guardadas en la base de datos y están disponibles para el estudiante.`);
       
     } catch (error) {
       console.error('❌ Error enviando explicaciones:', error);
@@ -518,13 +526,13 @@ const AdminStudentDetailPage = ({ onNavigate, student }) => {
               marginBottom: '2px'
             }}>
               Problemas de conexión
-            </div>
+        </div>
             <div style={{
               fontSize: '0.8rem',
               color: safeColor('textMuted')
             }}>
               Mostrando datos básicos. Algunas funciones pueden no estar disponibles.
-            </div>
+      </div>
           </div>
         </div>
       )}
@@ -866,10 +874,10 @@ const AdminStudentDetailPage = ({ onNavigate, student }) => {
               Explicaciones automáticas de las preguntas creadas para cada categoría
           </p>
         </div>
-          
+
           <div style={{ padding: '16px' }}>
             {studentData.categoryStats && studentData.categoryStats.length > 0 ? (
-                  <div style={{
+        <div style={{
                     display: 'flex',
                 flexDirection: 'column',
                 gap: '12px'
@@ -878,18 +886,18 @@ const AdminStudentDetailPage = ({ onNavigate, student }) => {
                   <div
                     key={index}
                     style={{
-                      background: safeColor('dark'),
+                  background: safeColor('dark'),
                       borderRadius: '8px',
-                      padding: '16px',
+                  padding: '16px',
                       border: `1px solid ${safeColor('border')}`
                     }}
                   >
-                    <div style={{
-                      display: 'flex',
+                  <div style={{
+                    display: 'flex',
                       justifyContent: 'space-between',
-                      alignItems: 'center',
+                    alignItems: 'center',
                       marginBottom: '12px'
-                    }}>
+                  }}>
                     <div>
                       <h4 style={{
                         fontSize: '1rem',
@@ -904,8 +912,8 @@ const AdminStudentDetailPage = ({ onNavigate, student }) => {
                         color: safeColor('textMuted')
                       }}>
                           {category.totalQuestions} preguntas • {category.accuracy}% de precisión
-                        </div>
                       </div>
+                    </div>
                       <div style={{
                         display: 'flex',
                         gap: '8px'
@@ -939,7 +947,7 @@ const AdminStudentDetailPage = ({ onNavigate, student }) => {
                           onClick={() => handleViewCategory(category)}
                           style={{
                             background: 'transparent',
-                            color: safeColor('textMuted'),
+                    color: safeColor('textMuted'),
                             border: `1px solid ${safeColor('border')}`,
                             borderRadius: '6px',
                             padding: '6px 12px',
@@ -994,7 +1002,7 @@ const AdminStudentDetailPage = ({ onNavigate, student }) => {
                           fontSize: '0.85rem',
                           resize: 'vertical',
                           fontFamily: 'inherit',
-                          lineHeight: '1.4'
+                    lineHeight: '1.4'
                         }}
                       />
                     ) : (
@@ -1015,8 +1023,8 @@ const AdminStudentDetailPage = ({ onNavigate, student }) => {
                         🔄 Cargando explicaciones para {category.categoryName}...
                       </div>
                     )}
-                  </div>
-                ))}
+                </div>
+              ))}
               </div>
             ) : (
               <div style={{
@@ -1036,8 +1044,8 @@ const AdminStudentDetailPage = ({ onNavigate, student }) => {
                 <p style={{ margin: 0 }}>
                   Este estudiante no tiene categorías asignadas para enviar explicaciones
                   </p>
-                </div>
-            )}
+            </div>
+          )}
             </div>
         </div>
       )}

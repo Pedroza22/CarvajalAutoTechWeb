@@ -3,6 +3,7 @@ import { AppConstants } from '../utils/constants';
 import CustomButton from './CustomButton';
 import StudentStatsCard from './StudentStatsCard';
 import CategoryQuizCard from './CategoryQuizCard';
+import StudentExplanations from './StudentExplanations';
 import StatisticsService from '../services/StatisticsService';
 
 // Fallback colors en caso de que AppConstants no esté disponible
@@ -457,6 +458,28 @@ const StudentDashboard = ({
               ))}
             </div>
           )}
+        </div>
+
+        {/* Sección de Explicaciones */}
+        <div style={{
+          background: safeColor('cardBg'),
+          borderRadius: '16px',
+          padding: '24px',
+          border: `1px solid ${safeColor('border')}`,
+          marginTop: '24px'
+        }}>
+          <h3 style={{
+            fontSize: '1.25rem',
+            fontWeight: '600',
+            margin: '0 0 16px 0',
+            color: safeColor('textPrimary'),
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
+            📚 Explicaciones Recibidas
+          </h3>
+          <StudentExplanations studentId={user?.id} />
         </div>
       </div>
     </div>
