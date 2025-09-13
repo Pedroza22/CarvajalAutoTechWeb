@@ -19,7 +19,7 @@ const AdminCreateQuestionPage = ({ onNavigate, questionData = null }) => {
     imageUrl: ''
   });
   const [selectedFile, setSelectedFile] = useState(null);
-  // const [uploading, setUploading] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   const isEditing = !!questionData;
 
@@ -77,13 +77,13 @@ const AdminCreateQuestionPage = ({ onNavigate, questionData = null }) => {
     if (file) {
       // Validar tipo de archivo
       if (!file.type.startsWith('image/')) {
-        window.alert('Por favor selecciona un archivo de imagen válido');
+        window.alert('Por favor selecciona un archivo de imagen válido (JPG, PNG, GIF, WebP)');
         return;
       }
       
       // Validar tamaño (máximo 5MB)
       if (file.size > 5 * 1024 * 1024) {
-        window.alert('El archivo es demasiado grande. Máximo 5MB');
+        window.alert('El archivo es demasiado grande. Máximo 5MB permitido');
         return;
       }
       
@@ -94,7 +94,19 @@ const AdminCreateQuestionPage = ({ onNavigate, questionData = null }) => {
 
   const uploadFile = async (file) => {
     try {
-      console.log('📤 Iniciando subida de archivo...');
+      setUploading(true);
+      console.log('📤 Iniciando subida de archivo...', {
+        fileName: file.name,
+        fileSize: file.size,
+        fileType: file.type
+      });
+      
+      // Verificar si el bucket existe primero
+      const bucketExists = await StorageService.checkBucketExists('images');
+      
+      if (!bucketExists) {
+        throw new Error('El bucket de imágenes no está configurado. Por favor contacta al administrador para configurar el almacenamiento de imágenes.');
+      }
       
       // Usar el servicio de storage
       const result = await StorageService.uploadFile(file, 'images', 'questions');
@@ -106,8 +118,8 @@ const AdminCreateQuestionPage = ({ onNavigate, questionData = null }) => {
       console.error('❌ Error subiendo archivo:', error);
       
       // Mostrar mensaje de error más específico
-      if (error.message.includes('Bucket not found')) {
-        throw new Error('El bucket de imágenes no existe. Por favor contacta al administrador para configurar el almacenamiento.');
+      if (error.message.includes('Bucket not found') || error.message.includes('no está configurado')) {
+        throw new Error('El almacenamiento de imágenes no está configurado. Por favor contacta al administrador.');
       } else if (error.message.includes('El archivo es demasiado grande')) {
         throw new Error('El archivo es demasiado grande. Máximo 5MB permitido.');
       } else if (error.message.includes('Solo se permiten archivos de imagen')) {
@@ -115,6 +127,8 @@ const AdminCreateQuestionPage = ({ onNavigate, questionData = null }) => {
       } else {
         throw new Error(`Error subiendo archivo: ${error.message}`);
       }
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -168,6 +182,7 @@ const AdminCreateQuestionPage = ({ onNavigate, questionData = null }) => {
       // Si hay un archivo seleccionado, subirlo primero
       if (selectedFile) {
         try {
+          console.log('📤 Subiendo archivo seleccionado...');
           imageUrl = await uploadFile(selectedFile);
           console.log('✅ Imagen subida exitosamente:', imageUrl);
         } catch (uploadError) {
@@ -176,6 +191,9 @@ const AdminCreateQuestionPage = ({ onNavigate, questionData = null }) => {
           setLoading(false);
           return;
         }
+      } else if (formData.imageUrl) {
+        // Si no hay archivo pero hay URL, usar la URL
+        imageUrl = formData.imageUrl.trim();
       }
       
       const questionPayload = {
@@ -187,7 +205,7 @@ const AdminCreateQuestionPage = ({ onNavigate, questionData = null }) => {
         correctAnswer: formData.correctAnswer,
         timeLimit: formData.timeLimit ? parseInt(formData.timeLimit) : null,
         explanation: formData.explanation.trim() || null,
-        imageUrl: imageUrl,
+        imageUrl: imageUrl, // URL de la imagen subida o URL proporcionada
         // createdBy se manejará en el servicio
       };
 
@@ -626,35 +644,109 @@ const AdminCreateQuestionPage = ({ onNavigate, questionData = null }) => {
               type="file"
               accept="image/*"
               onChange={handleFileChange}
+              disabled={uploading}
               style={{
                 width: '100%',
                 padding: '12px',
                 borderRadius: '8px',
                 border: `1px solid ${safeColor('border')}`,
-                background: safeColor('dark'),
+                background: uploading ? safeColor('border') : safeColor('dark'),
                 color: safeColor('textPrimary'),
                 fontSize: '1rem',
-                marginBottom: '8px'
+                marginBottom: '8px',
+                opacity: uploading ? 0.6 : 1,
+                cursor: uploading ? 'not-allowed' : 'pointer'
               }}
             />
             
+            {/* Mostrar estado de carga */}
+            {uploading && (
+              <div style={{
+                padding: '8px 12px',
+                background: safeColor('warning') + '20',
+                borderRadius: '6px',
+                fontSize: '0.9rem',
+                color: safeColor('warning'),
+                marginBottom: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}>
+                <div style={{
+                  width: '16px',
+                  height: '16px',
+                  border: `2px solid ${safeColor('warning')}`,
+                  borderTop: '2px solid transparent',
+                  borderRadius: '50%',
+                  animation: 'spin 1s linear infinite'
+                }}></div>
+                Subiendo imagen...
+              </div>
+            )}
+            
             {/* Mostrar archivo seleccionado */}
-            {selectedFile && (
+            {selectedFile && !uploading && (
               <div style={{
                 padding: '8px 12px',
                 background: safeColor('primary') + '20',
                 borderRadius: '6px',
                 fontSize: '0.9rem',
                 color: safeColor('primary'),
-                marginBottom: '8px'
+                marginBottom: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
               }}>
                 📎 {selectedFile.name} ({(selectedFile.size / 1024 / 1024).toFixed(2)} MB)
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedFile(null);
+                    document.querySelector('input[type="file"]').value = '';
+                  }}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: safeColor('primary'),
+                    cursor: 'pointer',
+                    fontSize: '1.2rem',
+                    padding: '0',
+                    marginLeft: 'auto'
+                  }}
+                >
+                  ✕
+                </button>
               </div>
             )}
             
-            {/* O URL como alternativa */}
-            <div style={{ marginTop: '12px' }}>
+            {/* Separador */}
+            <div style={{
+              textAlign: 'center',
+              margin: '16px 0',
+              color: safeColor('textSecondary'),
+              fontSize: '0.9rem'
+            }}>
+              O ingresa una URL de imagen
             </div>
+            
+            {/* Campo de URL */}
+            <input
+              type="url"
+              value={formData.imageUrl}
+              onChange={(e) => handleInputChange('imageUrl', e.target.value)}
+              placeholder="https://ejemplo.com/imagen.jpg"
+              disabled={!!selectedFile || uploading}
+              style={{
+                width: '100%',
+                padding: '12px',
+                borderRadius: '8px',
+                border: `1px solid ${safeColor('border')}`,
+                background: (selectedFile || uploading) ? safeColor('border') : safeColor('dark'),
+                color: safeColor('textPrimary'),
+                fontSize: '1rem',
+                opacity: (selectedFile || uploading) ? 0.6 : 1
+              }}
+            />
           </div>
 
           {/* Botones de acción */}

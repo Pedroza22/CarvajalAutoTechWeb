@@ -155,6 +155,43 @@ const AdminDashboard = ({ onLogout }) => {
       }}>
         {renderPage()}
       </div>
+
+      {/* Footer con políticas de privacidad */}
+      <div style={{
+        padding: '16px 24px',
+        borderTop: `1px solid ${safeColor('border')}`,
+        background: safeColor('dark'),
+        textAlign: 'center',
+        fontSize: '0.85rem',
+        color: safeColor('textSecondary')
+      }}>
+        <p style={{ margin: '0 0 8px 0' }}>
+          © 2025 CarvajalAutoTech. Todos los derechos reservados.
+        </p>
+        <p style={{ margin: '0' }}>
+          <a 
+            href="/politicas-privacidad.html" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            style={{
+              color: safeColor('primary'),
+              textDecoration: 'none',
+              borderBottom: `1px solid ${safeColor('primary')}30`,
+              transition: 'all 0.3s ease'
+            }}
+            onMouseEnter={(e) => {
+              e.target.style.borderBottomColor = safeColor('primary');
+              e.target.style.color = safeColor('primary');
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.borderBottomColor = safeColor('primary') + '30';
+              e.target.style.color = safeColor('primary');
+            }}
+          >
+            Políticas de Privacidad
+          </a>
+        </p>
+      </div>
     </div>
   );
 };
