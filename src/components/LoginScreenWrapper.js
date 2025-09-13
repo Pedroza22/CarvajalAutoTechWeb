@@ -78,9 +78,12 @@ const LoginScreenWrapper = ({ children, showLogo = true, logoPosition = 'top', h
         </p>
         <p style={{ margin: '0' }}>
           <a 
-            href="/politicas-privacidad.html" 
-            target="_blank" 
-            rel="noopener noreferrer"
+            href="#" 
+            onClick={(e) => {
+              e.preventDefault();
+              window.location.hash = '#privacy-policy';
+              window.dispatchEvent(new HashChangeEvent('hashchange'));
+            }}
             style={{
               color: getColor('primary'),
               textDecoration: 'none',

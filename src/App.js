@@ -14,6 +14,7 @@ import AdminStudentsPage from './components/admin/AdminStudentsPage';
 import AdminStudentsListPage from './components/admin/AdminStudentsListPage';
 import AdminStudentDetailPage from './components/admin/AdminStudentDetailPage';
 import AdminCreateQuestionPage from './components/admin/AdminCreateQuestionPage';
+import PrivacyPolicy from './components/PrivacyPolicy';
 import SupabaseConnectionTest from './components/SupabaseConnectionTest';
 import { getColor } from './utils/constants';
 import './App.css';
@@ -152,6 +153,26 @@ function App() {
 
     loadStudentData();
   }, [user, userRole]);
+
+  // Manejar cambios de hash para rutas
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.substring(1); // Remover el #
+      if (hash === 'privacy-policy') {
+        setCurrentPage('privacy-policy');
+      }
+    };
+
+    // Escuchar cambios de hash
+    window.addEventListener('hashchange', handleHashChange);
+    
+    // Verificar hash inicial
+    handleHashChange();
+
+    return () => {
+      window.removeEventListener('hashchange', handleHashChange);
+    };
+  }, []);
 
   // Componente AdminDashboard simplificado
   const AdminDashboard = () => {
@@ -471,6 +492,12 @@ function App() {
             </div>
             <SupabaseConnectionTest />
           </div>
+        );
+      case 'privacy-policy':
+        return (
+          <PrivacyPolicy 
+            onBack={() => setCurrentPage('selection')} 
+          />
         );
       default:
         return (

@@ -498,9 +498,12 @@ const StudentDashboard = ({
         </p>
         <p style={{ margin: '0' }}>
           <a 
-            href="/politicas-privacidad.html" 
-            target="_blank" 
-            rel="noopener noreferrer"
+            href="#" 
+            onClick={(e) => {
+              e.preventDefault();
+              window.location.hash = '#privacy-policy';
+              window.dispatchEvent(new HashChangeEvent('hashchange'));
+            }}
             style={{
               color: safeColor('primary'),
               textDecoration: 'none',
