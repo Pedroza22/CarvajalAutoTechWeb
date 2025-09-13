@@ -79,6 +79,7 @@ const CategoryQuestionsPage = ({ category, user, onBack, onStartQuiz }) => {
       setQuizStats(stats);
       
       setQuizCompleted(true);
+      setShowResults(true); // Mostrar resultados y explicaciones
       console.log('✅ Quiz completado y guardado:', stats);
       
       // Notificar al admin que se completó un quiz (para actualizar estadísticas)
@@ -106,6 +107,7 @@ const CategoryQuestionsPage = ({ category, user, onBack, onStartQuiz }) => {
       };
       setQuizStats(localStats);
       setQuizCompleted(true);
+      setShowResults(true); // Mostrar resultados incluso en caso de error
     } finally {
       setSavingAnswers(false);
     }

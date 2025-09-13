@@ -249,7 +249,7 @@ class StudentsService {
             answered: totalQuestions,
             correct: correctAnswers,
             accuracy,
-            published: false, // Siempre empezar como no publicado
+            published: category.published || false, // Usar el estado real de publicación
             lastAnswered
           });
         } catch (error) {
