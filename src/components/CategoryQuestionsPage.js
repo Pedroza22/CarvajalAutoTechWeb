@@ -1041,26 +1041,15 @@ const CategoryQuestionsPage = ({ category, user, onBack, onStartQuiz }) => {
                 </div>
               </div>
 
-              {/* Botones de acción */}
+              {/* Botón de acción */}
               <div style={{
                 display: 'flex',
-                gap: '16px',
-                justifyContent: 'center',
-                flexWrap: 'wrap'
+                justifyContent: 'center'
               }}>
-                <CustomButton
-                  text="Ver Resultados Detallados"
-                  onClick={() => setShowResults(true)}
-                  variant="primary"
-                  style={{
-                    fontSize: '1rem',
-                    padding: '12px 24px'
-                  }}
-                />
                 <CustomButton
                   text="Volver al Dashboard"
                   onClick={onBack}
-                  variant="outline"
+                  variant="primary"
                   style={{
                     fontSize: '1rem',
                     padding: '12px 24px'
