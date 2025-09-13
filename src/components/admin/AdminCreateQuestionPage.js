@@ -101,25 +101,47 @@ const AdminCreateQuestionPage = ({ onNavigate, questionData = null }) => {
         fileType: file.type
       });
       
-      // Verificar si el bucket existe primero
-      const bucketExists = await StorageService.checkBucketExists('images');
+      // Crear nombre único para el archivo (igual que en Flutter)
+      const fileName = `${Date.now()}${file.name.substring(file.name.lastIndexOf('.'))}`;
+      const filePath = `questions/${fileName}`;
       
-      if (!bucketExists) {
-        throw new Error('El bucket de imágenes no está configurado. Por favor contacta al administrador para configurar el almacenamiento de imágenes.');
+      console.log('📁 Subiendo archivo:', {
+        fileName: fileName,
+        filePath: filePath,
+        fileSize: file.size
+      });
+      
+      // Subir archivo a Supabase Storage (igual que en Flutter)
+      const { error: uploadError } = await supabase.storage
+        .from('images')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+      
+      if (uploadError) {
+        console.error('❌ Error subiendo archivo:', uploadError);
+        throw new Error(`Error subiendo archivo: ${uploadError.message}`);
       }
       
-      // Usar el servicio de storage
-      const result = await StorageService.uploadFile(file, 'images', 'questions');
+      // Obtener URL pública (igual que en Flutter)
+      const { data: { publicUrl } } = supabase.storage
+        .from('images')
+        .getPublicUrl(filePath);
       
-      console.log('✅ Archivo subido exitosamente:', result);
-      return result.publicUrl;
+      console.log('✅ Archivo subido exitosamente:', {
+        fileName: fileName,
+        publicUrl: publicUrl
+      });
+      
+      return publicUrl;
       
     } catch (error) {
       console.error('❌ Error subiendo archivo:', error);
       
       // Mostrar mensaje de error más específico
-      if (error.message.includes('Bucket not found') || error.message.includes('no está configurado')) {
-        throw new Error('El almacenamiento de imágenes no está configurado. Por favor contacta al administrador.');
+      if (error.message.includes('Bucket not found')) {
+        throw new Error('El bucket de imágenes no está configurado. Por favor contacta al administrador para configurar el almacenamiento de imágenes.');
       } else if (error.message.includes('El archivo es demasiado grande')) {
         throw new Error('El archivo es demasiado grande. Máximo 5MB permitido.');
       } else if (error.message.includes('Solo se permiten archivos de imagen')) {
@@ -639,25 +661,27 @@ const AdminCreateQuestionPage = ({ onNavigate, questionData = null }) => {
               Imagen - Opcional
             </label>
             
-            {/* Input de archivo */}
-            <input
-              type="file"
-              accept="image/*"
-              onChange={handleFileChange}
-              disabled={uploading}
-              style={{
-                width: '100%',
-                padding: '12px',
-                borderRadius: '8px',
-                border: `1px solid ${safeColor('border')}`,
-                background: uploading ? safeColor('border') : safeColor('dark'),
-                color: safeColor('textPrimary'),
-                fontSize: '1rem',
-                marginBottom: '8px',
-                opacity: uploading ? 0.6 : 1,
-                cursor: uploading ? 'not-allowed' : 'pointer'
-              }}
-            />
+            {/* Input de archivo - solo mostrar si no hay imagen */}
+            {!formData.imageUrl && (
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleFileChange}
+                disabled={uploading}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  borderRadius: '8px',
+                  border: `1px solid ${safeColor('border')}`,
+                  background: uploading ? safeColor('border') : safeColor('dark'),
+                  color: safeColor('textPrimary'),
+                  fontSize: '1rem',
+                  marginBottom: '8px',
+                  opacity: uploading ? 0.6 : 1,
+                  cursor: uploading ? 'not-allowed' : 'pointer'
+                }}
+              />
+            )}
             
             {/* Mostrar estado de carga */}
             {uploading && (
@@ -684,6 +708,72 @@ const AdminCreateQuestionPage = ({ onNavigate, questionData = null }) => {
               </div>
             )}
             
+            {/* Mostrar imagen actual o archivo seleccionado */}
+            {formData.imageUrl && !selectedFile && !uploading && (
+              <div style={{ marginBottom: '12px' }}>
+                <div style={{
+                  borderRadius: '8px',
+                  overflow: 'hidden',
+                  border: `1px solid ${safeColor('border')}`,
+                  marginBottom: '8px'
+                }}>
+                  <img 
+                    src={formData.imageUrl} 
+                    alt="Imagen de la pregunta"
+                    style={{
+                      width: '100%',
+                      height: '180px',
+                      objectFit: 'cover',
+                      display: 'block'
+                    }}
+                  />
+                </div>
+                <div style={{
+                  display: 'flex',
+                  gap: '12px'
+                }}>
+                  <button
+                    type="button"
+                    onClick={handleFileChange}
+                    style={{
+                      background: safeColor('primary'),
+                      color: 'white',
+                      border: 'none',
+                      padding: '8px 16px',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontSize: '0.9rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    ✏️ Reemplazar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFormData(prev => ({ ...prev, imageUrl: '' }));
+                    }}
+                    style={{
+                      background: 'none',
+                      color: safeColor('error'),
+                      border: `1px solid ${safeColor('error')}`,
+                      padding: '8px 16px',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontSize: '0.9rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    🗑️ Eliminar
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Mostrar archivo seleccionado */}
             {selectedFile && !uploading && (
               <div style={{
@@ -719,34 +809,38 @@ const AdminCreateQuestionPage = ({ onNavigate, questionData = null }) => {
               </div>
             )}
             
-            {/* Separador */}
-            <div style={{
-              textAlign: 'center',
-              margin: '16px 0',
-              color: safeColor('textSecondary'),
-              fontSize: '0.9rem'
-            }}>
-              O ingresa una URL de imagen
-            </div>
-            
-            {/* Campo de URL */}
-            <input
-              type="url"
-              value={formData.imageUrl}
-              onChange={(e) => handleInputChange('imageUrl', e.target.value)}
-              placeholder="https://ejemplo.com/imagen.jpg"
-              disabled={!!selectedFile || uploading}
-              style={{
-                width: '100%',
-                padding: '12px',
-                borderRadius: '8px',
-                border: `1px solid ${safeColor('border')}`,
-                background: (selectedFile || uploading) ? safeColor('border') : safeColor('dark'),
-                color: safeColor('textPrimary'),
-                fontSize: '1rem',
-                opacity: (selectedFile || uploading) ? 0.6 : 1
-              }}
-            />
+            {/* Separador y campo de URL - solo mostrar si no hay imagen */}
+            {!formData.imageUrl && !selectedFile && (
+              <>
+                <div style={{
+                  textAlign: 'center',
+                  margin: '16px 0',
+                  color: safeColor('textSecondary'),
+                  fontSize: '0.9rem'
+                }}>
+                  O ingresa una URL de imagen
+                </div>
+                
+                {/* Campo de URL */}
+                <input
+                  type="url"
+                  value={formData.imageUrl}
+                  onChange={(e) => handleInputChange('imageUrl', e.target.value)}
+                  placeholder="https://ejemplo.com/imagen.jpg"
+                  disabled={uploading}
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    borderRadius: '8px',
+                    border: `1px solid ${safeColor('border')}`,
+                    background: uploading ? safeColor('border') : safeColor('dark'),
+                    color: safeColor('textPrimary'),
+                    fontSize: '1rem',
+                    opacity: uploading ? 0.6 : 1
+                  }}
+                />
+              </>
+            )}
           </div>
 
           {/* Botones de acción */}
