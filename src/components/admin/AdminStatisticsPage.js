@@ -392,7 +392,7 @@ const AdminStatisticsPage = ({ onNavigate }) => {
           borderRadius: '12px',
           padding: '20px',
           marginBottom: '20px',
-          height: '120px',
+          height: '140px',
           display: 'flex',
           alignItems: 'end',
           justifyContent: 'space-around',
@@ -400,11 +400,21 @@ const AdminStatisticsPage = ({ onNavigate }) => {
           overflow: 'hidden',
           position: 'relative'
         }}>
+          {/* Línea de base */}
+          <div style={{
+            position: 'absolute',
+            bottom: '40px',
+            left: '20px',
+            right: '20px',
+            height: '1px',
+            background: safeColor('border'),
+            opacity: 0.3
+          }} />
           {statistics.weeklyActivity && statistics.weeklyActivity.length > 0 ? (
             statistics.weeklyActivity.map((dayData, index) => {
               const maxValue = Math.max(...statistics.weeklyActivity.map(d => d.count));
-              const normalizedHeight = maxValue > 0 ? (dayData.count / maxValue) * 60 + 20 : 20;
-              const pointSize = Math.max(8, Math.min(16, normalizedHeight / 4));
+              const normalizedHeight = maxValue > 0 ? (dayData.count / maxValue) * 80 + 20 : 20;
+              const pointSize = Math.max(10, Math.min(20, normalizedHeight / 3));
               
               return (
                 <div 
@@ -430,12 +440,12 @@ const AdminStatisticsPage = ({ onNavigate }) => {
                   {index < statistics.weeklyActivity.length - 1 && (
                     <div style={{
                       position: 'absolute',
-                      top: `${60 - normalizedHeight + pointSize/2}px`,
+                      top: `${80 - normalizedHeight + pointSize/2}px`,
                       left: '50%',
                       width: '100%',
                       height: '2px',
                       background: safeColor('primary'),
-                      opacity: 0.3,
+                      opacity: 0.4,
                       zIndex: 1
                     }} />
                   )}
@@ -449,8 +459,9 @@ const AdminStatisticsPage = ({ onNavigate }) => {
                     transition: 'all 0.3s ease',
                     position: 'relative',
                     zIndex: 2,
-                    boxShadow: `0 2px 8px ${safeColor('primary')}40`,
-                    transform: `translateY(${60 - normalizedHeight}px)`
+                    boxShadow: `0 3px 12px ${safeColor('primary')}50`,
+                    transform: `translateY(${80 - normalizedHeight}px)`,
+                    border: `2px solid ${safeColor('dark')}`
                   }} />
                   
                   {/* Valor del punto (tooltip) */}
@@ -458,23 +469,24 @@ const AdminStatisticsPage = ({ onNavigate }) => {
                     className="point-tooltip"
                     style={{
                       position: 'absolute',
-                      top: `${60 - normalizedHeight - 25}px`,
+                      top: `${80 - normalizedHeight - 30}px`,
                       left: '50%',
                       transform: 'translateX(-50%)',
                       background: safeColor('primary'),
                       color: 'white',
-                      padding: '2px 6px',
-                      borderRadius: '4px',
-                      fontSize: '0.65rem',
+                      padding: '4px 8px',
+                      borderRadius: '6px',
+                      fontSize: '0.7rem',
                       fontWeight: '600',
                       opacity: 0,
                       transition: 'opacity 0.3s ease',
                       zIndex: 3,
                       whiteSpace: 'nowrap',
-                      pointerEvents: 'none'
+                      pointerEvents: 'none',
+                      boxShadow: `0 2px 8px ${safeColor('primary')}30`
                     }}
                   >
-                    {dayData.count}
+                    {dayData.count} respuestas
                   </div>
                   
                   {/* Etiqueta del día */}
