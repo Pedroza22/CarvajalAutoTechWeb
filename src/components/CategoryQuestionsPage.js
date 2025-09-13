@@ -80,6 +80,16 @@ const CategoryQuestionsPage = ({ category, user, onBack, onStartQuiz }) => {
       
       setQuizCompleted(true);
       console.log('✅ Quiz completado y guardado:', stats);
+      
+      // Notificar al admin que se completó un quiz (para actualizar estadísticas)
+      try {
+        await StudentCategoriesService.notifyQuizCompletion(user.id, category.id, stats);
+        console.log('📢 Notificación enviada al admin');
+      } catch (notifyError) {
+        console.warn('⚠️ Error notificando al admin:', notifyError);
+        // No es crítico, continuar
+      }
+      
     } catch (error) {
       console.error('❌ Error enviando quiz:', error);
       // Aún así marcar como completado para mostrar estadísticas locales

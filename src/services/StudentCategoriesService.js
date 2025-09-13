@@ -377,6 +377,40 @@ class StudentCategoriesService {
       };
     }
   }
+
+  // Notificar al admin que se completó un quiz
+  async notifyQuizCompletion(studentId, categoryId, stats) {
+    try {
+      console.log('📢 Notificando completación de quiz:', { studentId, categoryId, stats });
+      
+      // Actualizar la tabla student_categories con las estadísticas más recientes
+      const { data, error } = await supabase
+        .from('student_categories')
+        .upsert({
+          student_id: studentId,
+          category_id: categoryId,
+          last_quiz_completed_at: new Date().toISOString(),
+          total_quizzes_completed: stats.totalQuizzes || 1,
+          last_quiz_score: stats.score || 0,
+          last_quiz_accuracy: stats.accuracy || 0,
+          last_quiz_completion_rate: stats.completionRate || 0,
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'student_id,category_id'
+        });
+
+      if (error) {
+        console.error('❌ Error actualizando estadísticas del admin:', error);
+        throw error;
+      }
+
+      console.log('✅ Estadísticas del admin actualizadas:', data);
+      return { success: true, data };
+    } catch (error) {
+      console.error('❌ Error en notifyQuizCompletion:', error);
+      return { success: false, error: error.message };
+    }
+  }
 }
 
 const studentCategoriesService = new StudentCategoriesService();

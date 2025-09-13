@@ -123,6 +123,12 @@ const AdminStudentDetailPage = ({ onNavigate, student }) => {
     }
   }, [student]);
 
+  // Función para recargar datos después de cambios
+  const refreshStudentData = useCallback(async () => {
+    console.log('🔄 Recargando datos del estudiante...');
+    await loadStudentDetail();
+  }, [loadStudentDetail]);
+
   const handleSendExplanations = async (category) => {
     console.log('🔍 handleSendExplanations llamado con:', category);
     console.log('🔍 categoryExplanations:', categoryExplanations);
@@ -190,6 +196,9 @@ const AdminStudentDetailPage = ({ onNavigate, student }) => {
       
       // Mostrar mensaje de éxito
       alert(`✅ Explicaciones enviadas exitosamente para ${category.categoryName}\n\nLas explicaciones han sido guardadas en la base de datos y están disponibles para el estudiante.`);
+      
+      // Recargar datos para reflejar los cambios
+      await refreshStudentData();
       
     } catch (error) {
       console.error('❌ Error enviando explicaciones:', error);
@@ -367,6 +376,18 @@ const AdminStudentDetailPage = ({ onNavigate, student }) => {
       setLoading(false);
     }
   }, [student?.id]); // Solo depender del ID del estudiante
+
+  // Polling para actualizar datos cada 30 segundos
+  useEffect(() => {
+    if (!student?.id) return;
+
+    const interval = setInterval(() => {
+      console.log('🔄 Actualización automática de datos del estudiante...');
+      refreshStudentData();
+    }, 30000); // 30 segundos
+
+    return () => clearInterval(interval);
+  }, [student?.id, refreshStudentData]);
 
   // Cargar explicaciones cuando se cambie al tab de explicaciones
   useEffect(() => {

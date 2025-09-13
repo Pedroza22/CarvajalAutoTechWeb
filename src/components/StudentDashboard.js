@@ -168,7 +168,6 @@ const StudentDashboard = ({
               text="Cerrar Sesión"
               variant="secondary"
               size="small"
-              icon="🚪"
               fullWidth={false}
               style={{
                 background: `${safeColor('secondary')}20`,

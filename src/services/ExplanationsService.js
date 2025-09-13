@@ -34,7 +34,32 @@ class ExplanationsService {
           };
           
           localStorage.setItem(explanationsKey, JSON.stringify(explanationData));
+          
+          // También guardar en clave consolidada
+          const consolidatedKey = `student_explanations_${studentId}`;
+          const existingConsolidated = localStorage.getItem(consolidatedKey);
+          let consolidated = [];
+          
+          if (existingConsolidated) {
+            try {
+              consolidated = JSON.parse(existingConsolidated);
+            } catch (parseError) {
+              console.warn('⚠️ Error parseando explicaciones consolidadas existentes:', parseError);
+              consolidated = [];
+            }
+          }
+          
+          // Agregar o actualizar la explicación en el array consolidado
+          const existingIndex = consolidated.findIndex(exp => exp.category_id === categoryId);
+          if (existingIndex >= 0) {
+            consolidated[existingIndex] = explanationData;
+          } else {
+            consolidated.push(explanationData);
+          }
+          
+          localStorage.setItem(consolidatedKey, JSON.stringify(consolidated));
           console.log('✅ Explicaciones guardadas en localStorage:', explanationData);
+          console.log('✅ Explicaciones consolidadas actualizadas:', consolidated);
           return { success: true, data: explanationData, temporary: true };
         } catch (localError) {
           console.error('❌ Error guardando en localStorage:', localError);
@@ -96,6 +121,8 @@ class ExplanationsService {
           if (key && key.startsWith(`explanations_${studentId}_`)) {
             try {
               const explanationData = JSON.parse(localStorage.getItem(key));
+              console.log('🔍 Explicación encontrada en localStorage:', explanationData);
+              
               if (explanationData && explanationData.status === 'sent') {
                 explanations.push({
                   id: `local_${explanationData.category_id}`,
@@ -111,6 +138,21 @@ class ExplanationsService {
             } catch (parseError) {
               console.warn('⚠️ Error parseando explicación de localStorage:', parseError);
             }
+          }
+        }
+
+        // También buscar en una clave consolidada
+        const consolidatedKey = `student_explanations_${studentId}`;
+        const consolidatedData = localStorage.getItem(consolidatedKey);
+        if (consolidatedData) {
+          try {
+            const consolidated = JSON.parse(consolidatedData);
+            console.log('🔍 Explicaciones consolidadas encontradas:', consolidated);
+            if (Array.isArray(consolidated)) {
+              explanations.push(...consolidated);
+            }
+          } catch (parseError) {
+            console.warn('⚠️ Error parseando explicaciones consolidadas:', parseError);
           }
         }
 

@@ -143,7 +143,7 @@ const AdminDashboard = ({ onLogout }) => {
               gap: '8px'
             }}
           >
-            🚪 Cerrar Sesión
+            Cerrar Sesión
           </button>
         </div>
       </div>
