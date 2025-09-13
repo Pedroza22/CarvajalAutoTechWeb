@@ -32,7 +32,7 @@ const AdminDashboard = ({ onLogout }) => {
       case 'students-list':
         return <AdminStudentsListPage onNavigate={handleNavigate} />;
       case 'student-detail':
-        return <AdminStudentDetailPage onNavigate={handleNavigate} student={pageData?.student} />;
+        return <AdminStudentDetailPage onNavigate={handleNavigate} student={pageData?.student || pageData} />;
       case 'categories':
         return <AdminCategoriesPage onNavigate={handleNavigate} />;
       case 'questions':

@@ -1,23 +1,94 @@
 import { supabase } from './supabase';
 
 class StudentsService {
-  // Obtener todos los estudiantes
+  // Obtener todos los estudiantes con estadísticas
   async getAllStudents() {
     try {
-      console.log('🔍 Obteniendo todos los estudiantes...');
+      console.log('🔍 Obteniendo todos los estudiantes con estadísticas...');
       
-      const { data, error } = await supabase
+      const { data: students, error: studentsError } = await supabase
         .from('app_users_enriched')
         .select('id, email, full_name, raw_user_meta_data')
         .order('email', { ascending: true });
 
-      if (error) {
-        console.error('❌ Error obteniendo estudiantes:', error);
-        throw error;
+      if (studentsError) {
+        console.error('❌ Error obteniendo estudiantes:', studentsError);
+        throw studentsError;
       }
 
-      console.log('✅ Estudiantes obtenidos:', data?.length || 0);
-      return data || [];
+      console.log('✅ Estudiantes obtenidos:', students?.length || 0);
+
+      // Obtener estadísticas para cada estudiante
+      const studentsWithStats = [];
+      for (const student of students || []) {
+        try {
+          // Obtener respuestas del estudiante
+          const { data: answers, error: answersError } = await supabase
+            .from('student_answers')
+            .select('is_correct, answered_at')
+            .eq('student_id', student.id);
+
+          if (answersError) {
+            console.warn(`⚠️ Error obteniendo respuestas para ${student.email}:`, answersError);
+          }
+
+          // Calcular estadísticas
+          const totalAnswers = answers?.length || 0;
+          const correctAnswers = answers?.filter(a => a.is_correct).length || 0;
+          const accuracy = totalAnswers > 0 ? Math.round((correctAnswers / totalAnswers) * 100) : 0;
+          
+          // Obtener última actividad
+          const lastActivity = answers?.length > 0 
+            ? answers.sort((a, b) => new Date(b.answered_at) - new Date(a.answered_at))[0].answered_at
+            : null;
+
+          // Contar quizzes únicos (por categoría)
+          const { data: uniqueCategories, error: categoriesError } = await supabase
+            .from('student_answers')
+            .select(`
+              questions (
+                category_id
+              )
+            `)
+            .eq('student_id', student.id);
+
+          const totalQuizzes = uniqueCategories ? 
+            new Set(uniqueCategories.map(a => a.questions?.category_id).filter(Boolean)).size : 0;
+
+          studentsWithStats.push({
+            id: student.id,
+            name: this.getDisplayName(student),
+            email: student.email,
+            studentId: student.raw_user_meta_data?.student_id || null,
+            created_at: student.raw_user_meta_data?.created_at || null,
+            totalQuizzes,
+            totalAnswers,
+            correctAnswers,
+            averageScore: accuracy,
+            lastActivity,
+            status: 'active' // Por defecto activo
+          });
+        } catch (error) {
+          console.warn(`⚠️ Error procesando estadísticas para ${student.email}:`, error);
+          // Agregar estudiante sin estadísticas
+          studentsWithStats.push({
+            id: student.id,
+            name: this.getDisplayName(student),
+            email: student.email,
+            studentId: student.raw_user_meta_data?.student_id || null,
+            created_at: student.raw_user_meta_data?.created_at || null,
+            totalQuizzes: 0,
+            totalAnswers: 0,
+            correctAnswers: 0,
+            averageScore: 0,
+            lastActivity: null,
+            status: 'active'
+          });
+        }
+      }
+
+      console.log('✅ Estudiantes con estadísticas procesados:', studentsWithStats.length);
+      return studentsWithStats;
     } catch (error) {
       console.error('❌ Error en getAllStudents:', error);
       throw error;

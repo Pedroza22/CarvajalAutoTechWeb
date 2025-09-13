@@ -11,7 +11,7 @@ const CategoryQuestionsPage = ({ category, user, onBack, onStartQuiz }) => {
   const [quizCompleted, setQuizCompleted] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [quizStats, setQuizStats] = useState(null);
-  const [savingAnswers, setSavingAnswers] = useState(false);
+  const [, setSavingAnswers] = useState(false);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [timeLeft, setTimeLeft] = useState(null);
   const [timerActive, setTimerActive] = useState(false);
@@ -101,9 +101,9 @@ const CategoryQuestionsPage = ({ category, user, onBack, onStartQuiz }) => {
     }
   };
 
-  const handleViewResults = () => {
-    setShowResults(true);
-  };
+  // const handleViewResults = () => {
+  //   setShowResults(true);
+  // };
 
   // Función para iniciar el temporizador de una pregunta
   const startQuestionTimer = (question) => {
@@ -208,13 +208,13 @@ const CategoryQuestionsPage = ({ category, user, onBack, onStartQuiz }) => {
     }
   }, [currentQuestionIndex, questions]);
 
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('es-ES', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
-  };
+  // const formatDate = (dateString) => {
+  //   return new Date(dateString).toLocaleDateString('es-ES', {
+  //     year: 'numeric',
+  //     month: 'short',
+  //     day: 'numeric'
+  //   });
+  // };
 
   const getQuestionTypeIcon = (type) => {
     switch (type) {

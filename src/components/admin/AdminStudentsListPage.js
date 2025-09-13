@@ -177,25 +177,32 @@ const AdminStudentsListPage = ({ onNavigate }) => {
       {/* Header */}
       <div style={{
         display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
+        flexDirection: 'column',
+        gap: '16px',
         marginBottom: '24px'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+        {/* Primera fila: Botón volver y título */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '16px',
+          flexWrap: 'wrap'
+        }}>
           <button
             onClick={() => onNavigate('admin-home')}
             style={{
               background: 'transparent',
               color: safeColor('textMuted'),
               border: 'none',
-              fontSize: '1rem',
+              fontSize: '0.9rem',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
-              gap: '8px',
-              padding: '8px 12px',
-              borderRadius: '8px',
-              transition: 'all 0.2s'
+              gap: '6px',
+              padding: '6px 10px',
+              borderRadius: '6px',
+              transition: 'all 0.2s',
+              flexShrink: 0
             }}
             onMouseEnter={(e) => {
               e.target.style.background = safeColor('primary') + '20';
@@ -208,33 +215,46 @@ const AdminStudentsListPage = ({ onNavigate }) => {
           >
             ← Volver
           </button>
-          <div>
-            <h1 style={{
-              fontSize: '1.8rem',
-              fontWeight: '700',
-              color: safeColor('textPrimary'),
-              margin: '0 0 8px 0'
-            }}>
-              Lista de Estudiantes
-            </h1>
-            <p style={{
-              fontSize: '1rem',
-              color: safeColor('textMuted'),
-              margin: 0
-            }}>
-              Gestiona y supervisa el progreso de los estudiantes
-            </p>
-          </div>
+          <h1 style={{
+            fontSize: '1.5rem',
+            fontWeight: '700',
+            color: safeColor('textPrimary'),
+            margin: 0,
+            flex: 1,
+            minWidth: 0
+          }}>
+            Lista de Estudiantes
+          </h1>
         </div>
+
+        {/* Segunda fila: Descripción y contador */}
         <div style={{
-          fontSize: '1rem',
-          color: safeColor('textMuted'),
-          background: safeColor('cardBg'),
-          padding: '8px 16px',
-          borderRadius: '8px',
-          border: `1px solid ${safeColor('border')}`
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '12px'
         }}>
-          Total: {students.length} estudiantes
+          <p style={{
+            fontSize: '0.9rem',
+            color: safeColor('textMuted'),
+            margin: 0,
+            flex: 1,
+            minWidth: 0
+          }}>
+            Gestiona y supervisa el progreso de los estudiantes
+          </p>
+          <div style={{
+            fontSize: '0.8rem',
+            color: safeColor('textMuted'),
+            background: safeColor('cardBg'),
+            padding: '4px 8px',
+            borderRadius: '6px',
+            border: `1px solid ${safeColor('border')}`,
+            flexShrink: 0
+          }}>
+            Total: {students.length}
+          </div>
         </div>
       </div>
 
@@ -302,7 +322,7 @@ const AdminStudentsListPage = ({ onNavigate }) => {
         </button>
       </div>
 
-      {/* Lista de estudiantes */}
+      {/* Lista de estudiantes - Estilo Top 5 */}
       <div style={{
         background: safeColor('cardBg'),
         borderRadius: '16px',
@@ -332,132 +352,111 @@ const AdminStudentsListPage = ({ onNavigate }) => {
             </p>
           </div>
         ) : (
-          <div>
-            {/* Header de la tabla */}
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: '2fr 2fr 1fr 1fr 1fr 1fr 1fr',
-              gap: '16px',
-              padding: '16px 20px',
-              background: safeColor('dark'),
-              borderBottom: `1px solid ${safeColor('border')}`,
-              fontSize: '0.9rem',
-              fontWeight: '600',
-              color: safeColor('textMuted')
+          <div style={{ padding: '20px' }}>
+            <h2 style={{
+              fontSize: '1.5rem',
+              fontWeight: '700',
+              color: safeColor('textPrimary'),
+              margin: '0 0 20px 0'
             }}>
-              <div style={{ cursor: 'pointer' }} onClick={() => handleSort('name')}>
-                Nombre {getSortIcon('name')}
-              </div>
-              <div style={{ cursor: 'pointer' }} onClick={() => handleSort('email')}>
-                Email {getSortIcon('email')}
-              </div>
-              <div style={{ cursor: 'pointer' }} onClick={() => handleSort('joinedDate')}>
-                Registro {getSortIcon('joinedDate')}
-              </div>
-              <div style={{ cursor: 'pointer' }} onClick={() => handleSort('totalQuizzes')}>
-                Quizzes {getSortIcon('totalQuizzes')}
-              </div>
-              <div style={{ cursor: 'pointer' }} onClick={() => handleSort('averageScore')}>
-                Promedio {getSortIcon('averageScore')}
-              </div>
-              <div style={{ cursor: 'pointer' }} onClick={() => handleSort('lastActivity')}>
-                Actividad {getSortIcon('lastActivity')}
-              </div>
-              <div>Estado</div>
-            </div>
-
-            {/* Filas de estudiantes */}
-            {filteredStudents.map((student, index) => (
-              <div
-                key={student.id}
-                onClick={() => handleStudentClick(student)}
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: '2fr 2fr 1fr 1fr 1fr 1fr 1fr',
-                  gap: '16px',
-                  padding: '16px 20px',
-                  borderBottom: index < filteredStudents.length - 1 ? `1px solid ${safeColor('border')}33` : 'none',
-                  cursor: 'pointer',
-                  transition: 'background-color 0.2s',
-                  ':hover': {
-                    background: safeColor('border') + '20'
-                  }
-                }}
-                onMouseEnter={(e) => {
-                  e.target.style.background = safeColor('border') + '20';
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.background = 'transparent';
-                }}
-              >
-                <div>
-                  <div style={{
-                    fontSize: '1rem',
-                    fontWeight: '600',
-                    color: safeColor('textPrimary'),
-                    marginBottom: '4px'
-                  }}>
-                    {student.name}
-                  </div>
-                  {student.studentId && (
+              Lista de Estudiantes
+            </h2>
+            
+            {/* Lista de estudiantes - Solo texto organizado */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {filteredStudents.map((student, index) => (
+                <div
+                  key={student.id}
+                  onClick={() => handleStudentClick(student)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '12px 16px',
+                    background: safeColor('dark'),
+                    borderRadius: '8px',
+                    border: `1px solid ${safeColor('border')}`,
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    minHeight: '60px'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = safeColor('primary') + '10';
+                    e.currentTarget.style.borderColor = safeColor('primary');
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = safeColor('dark');
+                    e.currentTarget.style.borderColor = safeColor('border');
+                  }}
+                >
+                  {/* Información principal del estudiante */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{
-                      fontSize: '0.8rem',
+                      fontSize: '1rem',
+                      fontWeight: '600',
+                      color: safeColor('textPrimary'),
+                      marginBottom: '2px',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis'
+                    }}>
+                      {student.name}
+                    </div>
+                    <div style={{
+                      fontSize: '0.85rem',
+                      color: safeColor('textMuted'),
+                      marginBottom: '2px',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis'
+                    }}>
+                      {student.email}
+                    </div>
+                    <div style={{
+                      fontSize: '0.75rem',
                       color: safeColor('textMuted')
                     }}>
-                      ID: {student.studentId}
+                      {student.totalAnswers || 0} preguntas respondidas • {student.averageScore || 0}%
                     </div>
-                  )}
-                </div>
-                <div style={{
-                  fontSize: '0.9rem',
-                  color: safeColor('textPrimary'),
-                  wordBreak: 'break-all'
-                }}>
-                  {student.email}
-                </div>
-                <div style={{
-                  fontSize: '0.9rem',
-                  color: safeColor('textMuted')
-                }}>
-                  {formatDate(student.created_at)}
-                </div>
-                <div style={{
-                  fontSize: '0.9rem',
-                  color: safeColor('textPrimary'),
-                  textAlign: 'center'
-                }}>
-                  {student.totalQuizzes || 0}
-                </div>
-                <div style={{
-                  fontSize: '0.9rem',
-                  color: safeColor('success'),
-                  textAlign: 'center',
-                  fontWeight: '600'
-                }}>
-                  {student.averageScore ? `${student.averageScore}%` : 'N/A'}
-                </div>
-                <div style={{
-                  fontSize: '0.9rem',
-                  color: safeColor('textMuted')
-                }}>
-                  {formatDate(student.lastActivity)}
-                </div>
-                <div style={{
-                  textAlign: 'center'
-                }}>
-                  <span style={{
-                    background: getStatusColor(student.status || 'active') + '20',
-                    color: getStatusColor(student.status || 'active'),
-                    padding: '4px 8px',
-                    borderRadius: '6px',
-                    fontSize: '0.8rem',
-                    fontWeight: '600'
+                  </div>
+
+                  {/* Estadísticas y flecha */}
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    flexShrink: 0
                   }}>
-                    {getStatusLabel(student.status || 'active')}
-                  </span>
+                    <div style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'flex-end',
+                      gap: '2px'
+                    }}>
+                      <div style={{
+                        fontSize: '0.85rem',
+                        color: safeColor('success'),
+                        fontWeight: '600'
+                      }}>
+                        {student.totalQuizzes || 0} quizzes
+                      </div>
+                      <div style={{
+                        fontSize: '0.75rem',
+                        color: safeColor('textMuted')
+                      }}>
+                        {student.lastActivity ? formatDate(student.lastActivity) : 'Sin actividad'}
+                      </div>
+                    </div>
+                    <div style={{
+                      color: safeColor('textMuted'),
+                      fontSize: '1rem'
+                    }}>
+                      →
+                    </div>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         )}
       </div>
@@ -546,26 +545,6 @@ const AdminStudentsListPage = ({ onNavigate }) => {
                   {selectedStudent.email}
                 </div>
               </div>
-
-              {selectedStudent.studentId && (
-                <div>
-                  <label style={{
-                    fontSize: '0.9rem',
-                    fontWeight: '600',
-                    color: safeColor('textMuted'),
-                    marginBottom: '4px',
-                    display: 'block'
-                  }}>
-                    ID de Estudiante
-                  </label>
-                  <div style={{
-                    fontSize: '1rem',
-                    color: safeColor('textPrimary')
-                  }}>
-                    {selectedStudent.studentId}
-                  </div>
-                </div>
-              )}
 
               <div style={{
                 display: 'grid',

@@ -15,6 +15,7 @@ import AdminStudentsListPage from './components/admin/AdminStudentsListPage';
 import AdminStudentDetailPage from './components/admin/AdminStudentDetailPage';
 import AdminCreateQuestionPage from './components/admin/AdminCreateQuestionPage';
 import SupabaseConnectionTest from './components/SupabaseConnectionTest';
+import ConnectionStatus from './components/ConnectionStatus';
 import { getColor } from './utils/constants';
 import './App.css';
 import CategoriesService from './services/CategoriesService';
@@ -470,6 +471,7 @@ function App() {
 
   return (
     <div className="App">
+      <ConnectionStatus />
       <LoginScreenWrapper hideLogoForSelection={currentPage === 'selection'}>
         {renderCurrentPage()}
       </LoginScreenWrapper>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { AppConstants } from '../utils/constants';
 
 // Fallback colors en caso de que AppConstants no esté disponible

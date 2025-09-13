@@ -29,7 +29,7 @@ const CustomTextField = ({
   const [value, setValue] = useState(controller?.value || '');
   
   const internalFocusNode = useRef(null);
-  const currentFocusNode = focusNode || internalFocusNode.current;
+  // const currentFocusNode = focusNode || internalFocusNode.current;
 
   useEffect(() => {
     if (controller) {
