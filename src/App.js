@@ -15,7 +15,6 @@ import AdminStudentsListPage from './components/admin/AdminStudentsListPage';
 import AdminStudentDetailPage from './components/admin/AdminStudentDetailPage';
 import AdminCreateQuestionPage from './components/admin/AdminCreateQuestionPage';
 import SupabaseConnectionTest from './components/SupabaseConnectionTest';
-import ConnectionStatus from './components/ConnectionStatus';
 import { getColor } from './utils/constants';
 import './App.css';
 import CategoriesService from './services/CategoriesService';
@@ -73,11 +72,20 @@ function App() {
           setProfile(null);
           return;
         }
-        let { data, error } = await supabase
+        
+        // Timeout para evitar que se quede cargando indefinidamente
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Timeout')), 5000)
+        );
+        
+        const profilePromise = supabase
           .from('user_profiles')
           .select('id, role, first_name, last_name')
           .eq('id', user.id)
           .maybeSingle();
+        
+        let { data, error } = await Promise.race([profilePromise, timeoutPromise]);
+        
         if (error) throw error;
         if (!data) {
           // fallback por email si el id no coincide en la tabla
@@ -126,8 +134,17 @@ function App() {
         setStudentStats(stats || {});
       } catch (e) {
         console.error('❌ Error cargando datos del estudiante:', e);
+        // Datos de fallback para que la aplicación funcione
         setCategories([]);
-        setStudentStats({});
+        setStudentStats({
+          overall: {
+            totalQuestions: 0,
+            totalCorrect: 0,
+            totalIncorrect: 0,
+            accuracy: 0,
+            streak: 0
+          }
+        });
       } finally {
         setIsLoadingCategories(false);
       }
@@ -471,7 +488,6 @@ function App() {
 
   return (
     <div className="App">
-      <ConnectionStatus />
       <LoginScreenWrapper hideLogoForSelection={currentPage === 'selection'}>
         {renderCurrentPage()}
       </LoginScreenWrapper>

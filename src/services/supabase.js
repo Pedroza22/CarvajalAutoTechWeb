@@ -1,12 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
-import { config, debugLog, errorLog } from '../config/environment';
 
-// Configuración de Supabase usando la configuración centralizada
-const supabaseUrl = config.supabase.url;
-const supabaseKey = config.supabase.anonKey;
-
-debugLog('Supabase URL:', supabaseUrl);
-debugLog('Supabase Key (primeros 20 chars):', supabaseKey.substring(0, 20) + '...');
+// Configuración de Supabase con credenciales directas
+const supabaseUrl = process.env.REACT_APP_SUPABASE_URL || 'https://supabase.carvajalautotech.com';
+const supabaseKey = process.env.REACT_APP_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzI1ODk2MDAwLCJleHAiOjIwNDExMjgwMDB9.kA_F1gSwDb_8foKy0vcttWvHJ8wn0HRnRmW31nXJNKQ';
 
 // Crear cliente con configuración mejorada y manejo de errores de red
 export const supabase = createClient(supabaseUrl, supabaseKey, {
@@ -31,10 +27,6 @@ export const supabase = createClient(supabaseUrl, supabaseKey, {
 // Función para verificar la conexión
 export const testSupabaseConnection = async () => {
   try {
-    debugLog('🔄 Probando conexión con Supabase...');
-    debugLog('📍 URL:', supabaseUrl);
-    debugLog('🔑 Key:', supabaseKey.substring(0, 20) + '...');
-    
     // Test básico de conectividad - usar una tabla que existe
     const { data, error } = await supabase
       .from('usuarios')
@@ -42,17 +34,15 @@ export const testSupabaseConnection = async () => {
       .limit(1);
     
     if (error) {
-      errorLog('⚠️ Error en consulta de prueba:', error.message);
       return { success: false, error: error.message };
     }
     
-    debugLog('✅ Conexión con Supabase exitosa');
     return { success: true, data };
   } catch (error) {
-    errorLog('❌ Error de conexión:', error);
     return { success: false, error: error.message };
   }
 };
+
 
 // Tipos de usuario
 export const USER_ROLES = {
