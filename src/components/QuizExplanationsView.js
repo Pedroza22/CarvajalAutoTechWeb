@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { getColor } from '../utils/constants';
 import { supabase } from '../services/supabase';
 
@@ -6,12 +6,34 @@ const QuizExplanationsView = ({ category, user, studentAnswers, onBack }) => {
   const [questions, setQuestions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [loadedStudentAnswers, setLoadedStudentAnswers] = useState({});
+  const [orderedQuestionIds, setOrderedQuestionIds] = useState([]);
 
   const safeColor = (colorName) => getColor(colorName) || '#ffffff';
 
   useEffect(() => {
     loadQuestions();
-  }, [category?.id]);
+  }, [category?.id, user?.id]);
+
+  useEffect(() => {
+    if (questions.length > 0) {
+      loadStudentAnswers();
+    }
+  }, [questions]);
+
+  // Ordenar las preguntas para mantener el mismo orden que en el quiz
+  const sortedQuestions = useMemo(() => {
+    if (!questions || !loadedStudentAnswers || !orderedQuestionIds.length) return questions;
+    
+    // Usar el orden cronológico de las respuestas para ordenar las preguntas
+    const sortedQuestions = orderedQuestionIds.map(questionId => 
+      questions.find(q => q.id === questionId)
+    ).filter(Boolean);
+    
+    console.log('📋 Preguntas ordenadas:', sortedQuestions.length);
+    console.log('📋 IDs ordenados (cronológico):', orderedQuestionIds);
+    return sortedQuestions;
+  }, [questions, loadedStudentAnswers, orderedQuestionIds]);
 
   const loadQuestions = async () => {
     if (!category?.id || !user?.id) return;
@@ -29,14 +51,15 @@ const QuizExplanationsView = ({ category, user, studentAnswers, onBack }) => {
           explanation,
           image_url
         `)
-        .eq('category_id', category.id)
-        .order('id');
+        .eq('category_id', category.id);
 
       if (error) {
         console.error('❌ Error cargando preguntas:', error);
         return;
       }
 
+      console.log('✅ Preguntas cargadas:', questionsData?.length || 0);
+      console.log('📋 IDs de preguntas cargadas:', questionsData?.map(q => q.id) || []);
       setQuestions(questionsData || []);
     } catch (error) {
       console.error('❌ Error cargando preguntas:', error);
@@ -45,8 +68,49 @@ const QuizExplanationsView = ({ category, user, studentAnswers, onBack }) => {
     }
   };
 
+  const loadStudentAnswers = async () => {
+    if (!category?.id || !user?.id) return;
+
+    try {
+      console.log('🔍 Cargando respuestas del estudiante para explicaciones...');
+      
+      // Cargar las respuestas del estudiante desde la base de datos en el orden que fueron respondidas
+      const { data: answersData, error } = await supabase
+        .from('student_answers')
+        .select(`
+          question_id,
+          answer,
+          answered_at
+        `)
+        .eq('student_id', user.id)
+        .in('question_id', questions.map(q => q.id))
+        .order('answered_at', { ascending: true });
+
+      if (error) {
+        console.error('❌ Error cargando respuestas del estudiante:', error);
+        return;
+      }
+
+      // Convertir a objeto con question_id como clave y mantener el orden
+      const answersMap = {};
+      const orderedQuestionIds = [];
+      
+      answersData?.forEach(answer => {
+        answersMap[answer.question_id] = answer.answer;
+        orderedQuestionIds.push(answer.question_id);
+      });
+
+      console.log('✅ Respuestas del estudiante cargadas:', Object.keys(answersMap).length);
+      console.log('📋 IDs de preguntas con respuestas (orden cronológico):', orderedQuestionIds);
+      setLoadedStudentAnswers(answersMap);
+      setOrderedQuestionIds(orderedQuestionIds);
+    } catch (error) {
+      console.error('❌ Error cargando respuestas del estudiante:', error);
+    }
+  };
+
   const nextQuestion = () => {
-    if (currentQuestionIndex < questions.length - 1) {
+    if (currentQuestionIndex < sortedQuestions.length - 1) {
       setCurrentQuestionIndex(prev => prev + 1);
     }
   };
@@ -58,35 +122,103 @@ const QuizExplanationsView = ({ category, user, studentAnswers, onBack }) => {
   };
 
   const getOptionStyle = (optionKey, question) => {
-    const studentAnswer = studentAnswers[question.id];
-    const isCorrect = optionKey === question.correct_answer;
-    const isStudentAnswer = optionKey === studentAnswer;
+    // Usar las respuestas cargadas desde la base de datos, o las pasadas como prop como fallback
+    const studentAnswer = loadedStudentAnswers[question.id] || studentAnswers[question.id];
+    
+    // Convertir optionKey a letra si viene como número o string numérico
+    let optionLetter;
+    if (typeof optionKey === 'number') {
+      optionLetter = String.fromCharCode(65 + optionKey);
+    } else if (typeof optionKey === 'string' && /^\d+$/.test(optionKey)) {
+      // Si es un string que contiene solo dígitos, convertir a número y luego a letra
+      optionLetter = String.fromCharCode(65 + parseInt(optionKey));
+    } else {
+      optionLetter = optionKey;
+    }
+    
+    // Determinar si esta opción es la correcta
+    let isCorrect = false;
+    if (['A', 'B', 'C', 'D'].includes(question.correct_answer)) {
+      // Si correct_answer es una letra, comparar directamente
+      isCorrect = optionLetter === question.correct_answer;
+    } else {
+      // Si correct_answer es texto completo, encontrar el índice correspondiente
+      const correctIndex = question.options.indexOf(question.correct_answer);
+      if (correctIndex !== -1) {
+        const correctOptionKey = String.fromCharCode(65 + correctIndex);
+        isCorrect = optionLetter === correctOptionKey;
+      }
+    }
+    
+    const isStudentAnswer = optionLetter === studentAnswer;
 
+    // Debug temporal para resaltado
+    console.log(`🎯 RESALTADO - Pregunta ${question.id.substring(0,8)}... Opción ${optionLetter}:`, {
+      isCorrect,
+      isStudentAnswer,
+      studentAnswer,
+      correctAnswer: question.correct_answer,
+      optionLetter,
+      questionOptions: question.options
+    });
+
+    let style;
     if (isCorrect) {
-      return {
+      style = {
         background: safeColor('success') + '20',
         border: `2px solid ${safeColor('success')}`,
         color: safeColor('success')
       };
+      console.log(`✅ APLICANDO ESTILO VERDE para opción ${optionLetter}`);
     } else if (isStudentAnswer && !isCorrect) {
-      return {
+      style = {
         background: safeColor('error') + '20',
         border: `2px solid ${safeColor('error')}`,
         color: safeColor('error')
       };
+      console.log(`❌ APLICANDO ESTILO ROJO para opción ${optionLetter}`);
     } else {
-      return {
+      style = {
         background: safeColor('cardBg'),
         border: `1px solid ${safeColor('border')}`,
         color: safeColor('textPrimary')
       };
+      console.log(`⚪ APLICANDO ESTILO NORMAL para opción ${optionLetter}`);
     }
+    
+    return style;
   };
 
   const getOptionIcon = (optionKey, question) => {
-    const studentAnswer = studentAnswers[question.id];
-    const isCorrect = optionKey === question.correct_answer;
-    const isStudentAnswer = optionKey === studentAnswer;
+    // Usar las respuestas cargadas desde la base de datos, o las pasadas como prop como fallback
+    const studentAnswer = loadedStudentAnswers[question.id] || studentAnswers[question.id];
+    
+    // Convertir optionKey a letra si viene como número o string numérico
+    let optionLetter;
+    if (typeof optionKey === 'number') {
+      optionLetter = String.fromCharCode(65 + optionKey);
+    } else if (typeof optionKey === 'string' && /^\d+$/.test(optionKey)) {
+      // Si es un string que contiene solo dígitos, convertir a número y luego a letra
+      optionLetter = String.fromCharCode(65 + parseInt(optionKey));
+    } else {
+      optionLetter = optionKey;
+    }
+    
+    // Determinar si esta opción es la correcta
+    let isCorrect = false;
+    if (['A', 'B', 'C', 'D'].includes(question.correct_answer)) {
+      // Si correct_answer es una letra, comparar directamente
+      isCorrect = optionLetter === question.correct_answer;
+    } else {
+      // Si correct_answer es texto completo, encontrar el índice correspondiente
+      const correctIndex = question.options.indexOf(question.correct_answer);
+      if (correctIndex !== -1) {
+        const correctOptionKey = String.fromCharCode(65 + correctIndex);
+        isCorrect = optionLetter === correctOptionKey;
+      }
+    }
+    
+    const isStudentAnswer = optionLetter === studentAnswer;
 
     if (isCorrect) {
       return '✅';
@@ -111,7 +243,7 @@ const QuizExplanationsView = ({ category, user, studentAnswers, onBack }) => {
     );
   }
 
-  if (!questions.length) {
+  if (!sortedQuestions.length) {
     return (
       <div style={{
         textAlign: 'center',
@@ -124,7 +256,7 @@ const QuizExplanationsView = ({ category, user, studentAnswers, onBack }) => {
     );
   }
 
-  const currentQuestion = questions[currentQuestionIndex];
+  const currentQuestion = sortedQuestions[currentQuestionIndex];
 
   return (
     <div style={{
@@ -197,21 +329,21 @@ const QuizExplanationsView = ({ category, user, studentAnswers, onBack }) => {
             color: safeColor('textPrimary'),
             fontWeight: '600'
           }}>
-            {currentQuestionIndex + 1} de {questions.length}
+            {currentQuestionIndex + 1} de {sortedQuestions.length}
           </div>
           
           <button
             onClick={nextQuestion}
-            disabled={currentQuestionIndex === questions.length - 1}
+            disabled={currentQuestionIndex === sortedQuestions.length - 1}
             style={{
-              background: currentQuestionIndex === questions.length - 1 ? safeColor('border') : safeColor('primary'),
-              color: currentQuestionIndex === questions.length - 1 ? safeColor('textMuted') : 'white',
+              background: currentQuestionIndex === sortedQuestions.length - 1 ? safeColor('border') : safeColor('primary'),
+              color: currentQuestionIndex === sortedQuestions.length - 1 ? safeColor('textMuted') : 'white',
               border: 'none',
               borderRadius: '6px',
               padding: '8px 16px',
               fontSize: '0.9rem',
-              cursor: currentQuestionIndex === questions.length - 1 ? 'not-allowed' : 'pointer',
-              opacity: currentQuestionIndex === questions.length - 1 ? 0.5 : 1
+              cursor: currentQuestionIndex === sortedQuestions.length - 1 ? 'not-allowed' : 'pointer',
+              opacity: currentQuestionIndex === sortedQuestions.length - 1 ? 0.5 : 1
             }}
           >
             Siguiente →
