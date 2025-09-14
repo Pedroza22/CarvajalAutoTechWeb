@@ -143,7 +143,6 @@ function App() {
             totalCorrect: 0,
             totalIncorrect: 0,
             accuracy: 0,
-            streak: 0
           }
         });
       } finally {
@@ -333,7 +332,6 @@ function App() {
               correctAnswers: studentStats?.overall?.totalCorrect || 0,
               incorrectAnswers: studentStats?.overall?.totalIncorrect || 0,
               accuracyPercentage: studentStats?.overall?.accuracy || 0,
-              streak: studentStats?.overall?.streak || 0
             }}
             onLogout={signOut}
             onStartQuiz={(categoryId) => console.log('Start quiz category:', categoryId)}

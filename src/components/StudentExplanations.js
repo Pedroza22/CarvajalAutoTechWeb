@@ -55,8 +55,6 @@ const StudentExplanations = ({ studentId }) => {
           )
         );
         console.log('✅ Explicación marcada como leída');
-      } else {
-        console.error('❌ Error marcando como leído:', result.error);
       }
     } catch (err) {
       console.error('Error marcando como leído:', err);
@@ -136,129 +134,147 @@ const StudentExplanations = ({ studentId }) => {
             border: `1px solid ${getColor('border')}`,
             borderRadius: '16px',
             padding: '24px',
-            position: 'relative',
-            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-            transition: 'all 0.2s ease'
+            position: 'relative'
           }}
         >
-            {/* Header con categoría y estado */}
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'flex-start',
-              marginBottom: '20px'
-            }}>
-              <div style={{ flex: 1 }}>
-                <h3 style={{
-                  color: getColor('textPrimary'),
-                  margin: '0 0 8px 0',
-                  fontSize: '1.3rem',
-                  fontWeight: '600',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px'
-                }}>
-                  <span style={{ fontSize: '1.5rem' }}>📖</span>
-                  {explanation.category_name || explanation.category_id}
-                </h3>
-                
-                <div style={{
-                  fontSize: '0.85rem',
-                  color: getColor('textMuted'),
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '16px'
-                }}>
-                  <span>📅 {formatDate(explanation.sent_at)}</span>
-                  {explanation.read_at && (
-                    <span>👁️ Leído: {formatDate(explanation.read_at)}</span>
-                  )}
-                </div>
-              </div>
-              
-              {/* Indicador de estado mejorado */}
-              <div style={{
-                padding: '8px 12px',
-                borderRadius: '20px',
-                fontSize: '0.8rem',
+          {/* Header con categoría y estado */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'flex-start',
+            marginBottom: '16px'
+          }}>
+            <div style={{ flex: 1 }}>
+              <h3 style={{
+                color: getColor('textPrimary'),
+                margin: '0 0 4px 0',
+                fontSize: '1.1rem',
                 fontWeight: '600',
-                background: explanation.status === 'read' ? getColor('success') : getColor('warning'),
-                color: 'white',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}>
+                📖 {explanation.category_name || explanation.category_id}
+              </h3>
+              <p style={{
+                color: getColor('textMuted'),
+                margin: '0',
+                fontSize: '0.85rem',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '4px'
               }}>
-                {explanation.status === 'read' ? '✅ Leído' : '📬 Nuevo'}
-              </div>
+                📅 {formatDate(explanation.sent_at)}
+              </p>
             </div>
-
-            {/* Contenido de las explicaciones */}
+            
             <div style={{
-              background: getColor('background'),
-              border: `1px solid ${getColor('border')}`,
+              background: getColor('warning'),
+              color: 'white',
+              padding: '4px 8px',
               borderRadius: '12px',
-              padding: '20px',
-              marginBottom: '16px',
-              whiteSpace: 'pre-wrap',
-              lineHeight: '1.7',
-              color: getColor('textPrimary'),
-              fontSize: '0.95rem',
-              maxHeight: '300px',
-              overflowY: 'auto'
+              fontSize: '0.75rem',
+              fontWeight: '500'
             }}>
-              <div style={{
-                fontSize: '0.8rem',
-                color: getColor('textMuted'),
-                marginBottom: '12px',
-                fontWeight: '600',
-                textTransform: 'uppercase',
-                letterSpacing: '0.5px'
-              }}>
-                📝 Explicaciones Detalladas
-              </div>
-              {explanation.explanations}
+              Nuevo
             </div>
-
-            {/* Botón para marcar como leído */}
-            {explanation.status === 'sent' && (
-              <div style={{
-                display: 'flex',
-                justifyContent: 'flex-end',
-                marginTop: '16px'
-              }}>
-                <button
-                  onClick={() => markAsRead(explanation.category_id)}
-                  style={{
-                    background: getColor('primary'),
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '8px',
-                    padding: '10px 20px',
-                    fontSize: '0.9rem',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    fontWeight: '500',
-                    transition: 'all 0.2s ease',
-                    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)'
-                  }}
-                  onMouseOver={(e) => {
-                    e.target.style.background = getColor('primaryHover') || getColor('primary');
-                    e.target.style.transform = 'translateY(-1px)';
-                  }}
-                  onMouseOut={(e) => {
-                    e.target.style.background = getColor('primary');
-                    e.target.style.transform = 'translateY(0)';
-                  }}
-                >
-                  👁️ Marcar como leído
-                </button>
-              </div>
-            )}
           </div>
-        ))}
-      </div>
+
+          {/* Contenido de las explicaciones */}
+          <div style={{
+            background: getColor('background'),
+            borderRadius: '8px',
+            padding: '16px',
+            border: `1px solid ${getColor('border')}33`,
+            maxHeight: '200px',
+            overflowY: 'auto'
+          }}>
+            <h4 style={{
+              color: getColor('textPrimary'),
+              margin: '0 0 12px 0',
+              fontSize: '0.9rem',
+              fontWeight: '600',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}>
+              📄 EXPLICACIONES DETALLADAS
+            </h4>
+            
+            <div style={{
+              color: getColor('textPrimary'),
+              lineHeight: '1.5',
+              fontSize: '0.85rem'
+            }}>
+              {explanation.explanations && Array.isArray(explanation.explanations) ? (
+                explanation.explanations.map((exp, index) => (
+                  <div key={index} style={{ marginBottom: '12px' }}>
+                    <p style={{ 
+                      margin: '0 0 6px 0',
+                      fontWeight: '500'
+                    }}>
+                      {index + 1}. Pregunta: "{exp.question}"
+                    </p>
+                    <p style={{ 
+                      margin: '0 0 6px 0',
+                      color: getColor('textMuted'),
+                      fontSize: '0.8rem'
+                    }}>
+                      Un veh...
+                    </p>
+                    <p style={{ 
+                      margin: '0 0 4px 0',
+                      fontWeight: '500'
+                    }}>
+                      Explicación:
+                    </p>
+                    <p style={{ margin: '0' }}>
+                      • {exp.explanation}
+                    </p>
+                    <p style={{ 
+                      margin: '4px 0 0 0',
+                      fontSize: '0.8rem'
+                    }}>
+                      o La baja está muy alta (60 psi).
+                    </p>
+                  </div>
+                ))
+              ) : (
+                <p style={{ color: getColor('textMuted') }}>
+                  No hay explicaciones detalladas disponibles
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Botón de acción */}
+          <div style={{
+            marginTop: '16px',
+            display: 'flex',
+            justifyContent: 'center'
+          }}>
+            <button
+              onClick={() => markAsRead(explanation.category_id)}
+              style={{
+                background: getColor('primary'),
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                padding: '10px 20px',
+                fontSize: '0.85rem',
+                fontWeight: '500',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}
+            >
+              ✓ Marcar como leído
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
   );
 };
 

@@ -57,8 +57,9 @@ const CategoryQuizCard = ({ category, onTap, onStartQuiz }) => {
 
   const name = category.name || '';
   const completed = category.completed || 0;
+  const currentProgress = category.currentProgress || completed; // Usar progreso actual si está disponible
   const questionCount = category.questionCount || 0;
-  const progress = safeProgress(completed, questionCount);
+  const progress = safeProgress(currentProgress, questionCount);
   const lastScore = category.lastScore;
   const color = getCategoryColor(name);
 
@@ -145,7 +146,7 @@ const CategoryQuizCard = ({ category, onTap, onStartQuiz }) => {
                 fontWeight: '500',
                 marginBottom: '3px'
               }}>
-                Progreso: {completed}/{questionCount}
+                Progreso: {currentProgress}/{questionCount}
               </div>
               <div style={{
                 width: '100%',

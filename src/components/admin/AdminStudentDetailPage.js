@@ -3,6 +3,7 @@ import { getColor } from '../../utils/constants';
 import StudentsService from '../../services/StudentsService';
 import StudentCategoriesService from '../../services/StudentCategoriesService';
 import ExplanationsService from '../../services/ExplanationsService';
+import { supabase } from '../../services/supabase';
 
 const AdminStudentDetailPage = ({ onNavigate, student }) => {
   console.log('🔍 AdminStudentDetailPage recibió student:', student);
@@ -10,7 +11,7 @@ const AdminStudentDetailPage = ({ onNavigate, student }) => {
   const [studentData, setStudentData] = useState(student || {});
   const [quizHistory, setQuizHistory] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState('quizzes');
   const [categoryExplanations, setCategoryExplanations] = useState({});
   const [connectionError, setConnectionError] = useState(false);
 
@@ -73,16 +74,20 @@ const AdminStudentDetailPage = ({ onNavigate, student }) => {
       setStudentData(enrichedData);
       setConnectionError(false); // Resetear error de conexión
       
-      // Generar historial de quizzes basado en las categorías
+      // Generar historial de quizzes basado en las categorías con datos reales
       const quizHistoryData = detailData.categoryStats?.map((category, index) => ({
         id: index + 1,
         quizName: `Quiz de ${category.categoryName}`,
         category: category.categoryName,
+        categoryId: category.categoryId,
         score: category.accuracy,
         totalQuestions: category.totalQuestions,
-        correctAnswers: Math.round((category.accuracy / 100) * category.totalQuestions),
-        timeSpent: category.totalQuestions * 2, // Estimado
-        completedAt: detailData.lastActivity || new Date().toISOString(),
+        correctAnswers: category.correct,
+        incorrectAnswers: category.incorrect,
+        timeSpent: category.totalTimeMinutes, // Tiempo real en minutos
+        completedAt: category.completedAt,
+        formattedDate: category.formattedDate,
+        published: category.published,
         difficulty: category.accuracy >= 80 ? 'easy' : category.accuracy >= 60 ? 'medium' : 'hard'
       })) || [];
       
@@ -159,14 +164,32 @@ const AdminStudentDetailPage = ({ onNavigate, student }) => {
       
       console.log('✅ Usuario confirmó el envío');
       
+      // Formatear explicaciones como array de objetos
+      const formattedExplanations = explanations.split('\n').map((line, index) => {
+        // Buscar patrones como "1. Pregunta: ..." o "Explicación: ..."
+        if (line.includes('Pregunta:') || line.includes('Explicación:')) {
+          return {
+            question: `Pregunta ${index + 1}`,
+            explanation: line.replace(/^\d+\.\s*/, '').replace(/^(Pregunta:|Explicación:)\s*/, ''),
+            questionText: line.includes('Pregunta:') ? line.replace(/^\d+\.\s*Pregunta:\s*/, '') : ''
+          };
+        }
+        return {
+          question: `Pregunta ${index + 1}`,
+          explanation: line,
+          questionText: ''
+        };
+      }).filter(exp => exp.explanation.trim() !== '');
+
       // Enviar explicaciones a la base de datos
       console.log('📧 Enviando explicaciones a la base de datos...');
       console.log('🔍 StudentData.id:', studentData.id);
       console.log('🔍 Category.categoryId:', category.categoryId);
+      console.log('🔍 Formatted explanations:', formattedExplanations);
       const result = await ExplanationsService.sendExplanationsToStudent(
         studentData.id,
         category.categoryId,
-        explanations,
+        formattedExplanations,
         category.categoryName
       );
       
@@ -206,6 +229,138 @@ const AdminStudentDetailPage = ({ onNavigate, student }) => {
     }
   };
 
+  const handleToggleStudyMode = async (category) => {
+    console.log('🔍 handleToggleStudyMode llamado con:', category);
+    console.log('🔍 category.modo actual:', category.modo);
+    console.log('🔍 category.categoryId:', category.categoryId);
+    
+    try {
+      const newModo = !category.modo;
+      console.log('🔍 Nuevo modo:', newModo);
+      
+      // Actualizar el modo en la base de datos
+      const { data, error } = await supabase
+        .from('student_categories')
+        .update({ 
+          modo: newModo,
+          updated_at: new Date().toISOString()
+        })
+        .eq('student_id', studentData.id)
+        .eq('category_id', category.categoryId);
+
+      if (error) {
+        console.error('❌ Error actualizando modo:', error);
+        alert(`Error actualizando modo: ${error.message}`);
+        return;
+      }
+
+      console.log('✅ Modo actualizado exitosamente:', newModo);
+      
+      // Actualizar el estado local
+      setStudentData(prevData => {
+        const updatedCategoryStats = prevData.categoryStats.map(stat => {
+          if (stat.categoryId === category.categoryId) {
+            return { ...stat, modo: newModo };
+          }
+          return stat;
+        });
+        
+        return {
+          ...prevData,
+          categoryStats: updatedCategoryStats
+        };
+      });
+      
+      alert(newModo 
+        ? `🎮 Modo Quiz habilitado para ${category.categoryName}. El estudiante puede hacer el quiz.`
+        : `📚 Modo Estudio habilitado para ${category.categoryName}. El estudiante verá las explicaciones en el quiz.`
+      );
+      
+    } catch (error) {
+      console.error('❌ Error en handleToggleStudyMode:', error);
+      alert('❌ Error actualizando el modo. Inténtalo de nuevo.');
+    }
+  };
+
+  const handleToggleExplanations = async (category) => {
+    console.log('🔄 Toggle explicaciones para categoría:', category);
+    console.log('🔍 Estado actual de published:', category.published);
+    console.log('🔍 studentData.id:', studentData.id);
+    console.log('🔍 category.categoryId:', category.categoryId);
+    
+    try {
+      const newStatus = !category.published;
+      console.log('🔍 Nuevo estado:', newStatus);
+      
+      // Actualizar el estado en la base de datos usando el servicio
+      const result = await StudentsService.toggleCategoryPublication(
+        studentData.id, 
+        category.categoryId, 
+        newStatus
+      );
+
+      if (!result.success) {
+        console.error('❌ Error actualizando estado de explicaciones:', result.error);
+        alert(`Error actualizando estado de explicaciones: ${result.error}`);
+        return;
+      }
+
+      console.log('✅ Estado de explicaciones actualizado:', newStatus);
+      console.log('✅ Resultado:', result);
+      alert(newStatus 
+        ? `Explicaciones habilitadas para ${category.categoryName}` 
+        : `Explicaciones deshabilitadas para ${category.categoryName}`
+      );
+      
+      // Recargar datos del estudiante
+      await refreshStudentData();
+    } catch (error) {
+      console.error('❌ Error en handleToggleExplanations:', error);
+      alert('Error actualizando estado de explicaciones');
+    }
+  };
+
+  const handleToggleQuizMode = async (category) => {
+    console.log('🎮 Toggle modo quiz para categoría:', category);
+    console.log('🔍 Estado actual de modo:', category.modo);
+    console.log('🔍 studentData.id:', studentData.id);
+    console.log('🔍 category.categoryId:', category.categoryId);
+    
+    try {
+      const newModo = !category.modo;
+      console.log('🔍 Nuevo modo:', newModo);
+      
+      // Actualizar directamente en la base de datos
+      const { data, error } = await supabase
+        .from('student_categories')
+        .update({ 
+          modo: newModo
+        })
+        .eq('student_id', studentData.id)
+        .eq('category_id', category.categoryId);
+
+      if (error) {
+        console.error('❌ Error actualizando modo:', error);
+        throw error;
+      }
+
+      console.log('✅ Modo actualizado exitosamente:', newModo);
+      
+      // Mostrar mensaje de confirmación
+      if (newModo) {
+        alert(`🎮 Quiz habilitado para ${category.categoryName}. El estudiante puede hacer el quiz.`);
+      } else {
+        alert(`📚 Modo estudio activado para ${category.categoryName}. El estudiante solo puede ver explicaciones.`);
+      }
+      
+      // Recargar datos del estudiante
+      await refreshStudentData();
+    } catch (error) {
+      console.error('❌ Error en handleToggleQuizMode:', error);
+      alert('Error actualizando modo del quiz');
+    }
+  };
+
   const handleViewCategory = (category) => {
     console.log('👁️ Viendo detalles de categoría:', category.categoryName);
     
@@ -230,9 +385,9 @@ const AdminStudentDetailPage = ({ onNavigate, student }) => {
       border: 1px solid #333;
       border-radius: 12px;
       padding: 24px;
-      max-width: 500px;
+      max-width: 700px;
       width: 90%;
-      max-height: 80vh;
+      max-height: 85vh;
       overflow-y: auto;
       color: white;
       font-family: Arial, sans-serif;
@@ -281,8 +436,8 @@ const AdminStudentDetailPage = ({ onNavigate, student }) => {
       
       <div>
         <h3 style="color: #4CAF50; margin-bottom: 10px;">💡 Explicaciones</h3>
-        <div style="background: #2a2a2a; padding: 12px; border-radius: 8px; max-height: 200px; overflow-y: auto;">
-          <pre style="margin: 0; white-space: pre-wrap; font-family: inherit; font-size: 14px; line-height: 1.4;">${explanations}</pre>
+        <div style="background: #2a2a2a; padding: 16px; border-radius: 8px; max-height: 400px; overflow-y: auto; word-wrap: break-word;">
+          <div style="margin: 0; white-space: pre-wrap; font-family: inherit; font-size: 13px; line-height: 1.5; color: #e0e0e0;">${explanations}</div>
         </div>
       </div>
     `;
@@ -569,7 +724,6 @@ const AdminStudentDetailPage = ({ onNavigate, student }) => {
         msOverflowStyle: 'none'
       }}>
         {[
-          { id: 'overview', label: 'Resumen', icon: '📊' },
           { id: 'quizzes', label: 'Historial', icon: '📝' },
           { id: 'explanations', label: 'Explicaciones', icon: '📤' }
         ].map(tab => (
@@ -610,131 +764,6 @@ const AdminStudentDetailPage = ({ onNavigate, student }) => {
       </div>
 
       {/* Contenido de las tabs */}
-      {activeTab === 'overview' && (
-        <div>
-          {/* Métricas principales */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-            gap: '8px',
-            marginBottom: '16px'
-          }}>
-            <div style={{
-              background: safeColor('cardBg'),
-              borderRadius: '8px',
-              padding: '12px',
-              border: `1px solid ${safeColor('border')}`,
-              textAlign: 'center'
-            }}>
-              <div style={{
-                fontSize: '1.2rem',
-                marginBottom: '6px'
-              }}>📝</div>
-              <h3 style={{
-                fontSize: '1.2rem',
-                fontWeight: '700',
-                color: safeColor('primary'),
-                margin: '0 0 2px 0'
-              }}>
-                {studentData.totalQuizzes || 0}
-              </h3>
-              <p style={{
-                fontSize: '0.75rem',
-                color: safeColor('textMuted'),
-                margin: 0
-              }}>
-                Quizzes Completados
-              </p>
-            </div>
-
-            <div style={{
-              background: safeColor('cardBg'),
-              borderRadius: '8px',
-              padding: '12px',
-              border: `1px solid ${safeColor('border')}`,
-              textAlign: 'center'
-            }}>
-              <div style={{
-                fontSize: '1.2rem',
-                marginBottom: '6px'
-              }}>⭐</div>
-              <h3 style={{
-                fontSize: '1.2rem',
-                fontWeight: '700',
-                color: getScoreColor(studentData.averageScore || 0),
-                margin: '0 0 2px 0'
-              }}>
-                {studentData.averageScore ? `${studentData.averageScore}%` : 'N/A'}
-              </h3>
-              <p style={{
-                fontSize: '0.75rem',
-                color: safeColor('textMuted'),
-                margin: 0
-              }}>
-                Puntuación Promedio
-              </p>
-            </div>
-
-            <div style={{
-              background: safeColor('cardBg'),
-              borderRadius: '8px',
-              padding: '12px',
-              border: `1px solid ${safeColor('border')}`,
-              textAlign: 'center'
-            }}>
-              <div style={{
-                fontSize: '1.2rem',
-                marginBottom: '6px'
-              }}>⏱️</div>
-              <h3 style={{
-                fontSize: '1.2rem',
-                fontWeight: '700',
-                color: safeColor('warning'),
-                margin: '0 0 2px 0'
-              }}>
-                {formatTime(studentData.totalTimeSpent || 0)}
-              </h3>
-              <p style={{
-                fontSize: '0.75rem',
-                color: safeColor('textMuted'),
-                margin: 0
-              }}>
-                Tiempo Total
-              </p>
-            </div>
-
-            <div style={{
-              background: safeColor('cardBg'),
-              borderRadius: '8px',
-              padding: '12px',
-              border: `1px solid ${safeColor('border')}`,
-              textAlign: 'center'
-            }}>
-              <div style={{
-                fontSize: '1.2rem',
-                marginBottom: '6px'
-              }}>📅</div>
-              <h3 style={{
-                fontSize: '0.9rem',
-                fontWeight: '700',
-                color: safeColor('textPrimary'),
-                margin: '0 0 2px 0',
-                lineHeight: '1.1'
-              }}>
-                {formatDate(studentData.lastActivity)}
-              </h3>
-              <p style={{
-                fontSize: '0.75rem',
-                color: safeColor('textMuted'),
-                margin: 0
-              }}>
-                Última Actividad
-              </p>
-            </div>
-          </div>
-
-        </div>
-      )}
 
       {activeTab === 'quizzes' && (
         <div style={{
@@ -797,7 +826,7 @@ const AdminStudentDetailPage = ({ onNavigate, student }) => {
                       color: safeColor('textPrimary'),
                       margin: '0 0 8px 0'
                     }}>
-                      {quiz.quizName}
+                      {quiz.category}
                     </h4>
                     <div style={{
                       display: 'flex',
@@ -813,7 +842,27 @@ const AdminStudentDetailPage = ({ onNavigate, student }) => {
                         fontSize: '0.8rem',
                         fontWeight: '600'
                       }}>
-                        📂 {quiz.category}
+                        📊 {quiz.totalQuestions} preguntas
+                      </span>
+                      <span style={{
+                        background: safeColor('success') + '20',
+                        color: safeColor('success'),
+                        padding: '4px 8px',
+                        borderRadius: '6px',
+                        fontSize: '0.8rem',
+                        fontWeight: '600'
+                      }}>
+                        ✅ {quiz.correctAnswers} correctas
+                      </span>
+                      <span style={{
+                        background: safeColor('error') + '20',
+                        color: safeColor('error'),
+                        padding: '4px 8px',
+                        borderRadius: '6px',
+                        fontSize: '0.8rem',
+                        fontWeight: '600'
+                      }}>
+                        ❌ {quiz.incorrectAnswers} incorrectas
                       </span>
                       <span style={{
                         background: getDifficultyColor(quiz.difficulty) + '20',
@@ -838,9 +887,21 @@ const AdminStudentDetailPage = ({ onNavigate, student }) => {
                     </div>
                     <div style={{
                       fontSize: '0.9rem',
-                      color: safeColor('textMuted')
+                      color: safeColor('textMuted'),
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px'
                     }}>
-                      📅 {formatDate(quiz.completedAt)}
+                      <span>📅 {quiz.formattedDate || formatDate(quiz.completedAt)}</span>
+                      {quiz.published && (
+                        <span style={{
+                          color: safeColor('success'),
+                          fontWeight: '600',
+                          fontSize: '0.8rem'
+                        }}>
+                          ✅ Explicaciones habilitadas
+                        </span>
+                      )}
                     </div>
                   </div>
                   <div style={{
@@ -885,14 +946,14 @@ const AdminStudentDetailPage = ({ onNavigate, student }) => {
             color: safeColor('textPrimary'),
               margin: 0
           }}>
-              📤 Enviar Explicaciones por Categoría
+              🎮 Control de Modo por Categoría
           </h3>
           <p style={{
               fontSize: '0.85rem',
             color: safeColor('textMuted'),
               margin: '4px 0 0 0'
           }}>
-              Explicaciones automáticas de las preguntas creadas para cada categoría
+              Activa/desactiva el modo estudio para que el estudiante vea las explicaciones en el quiz
           </p>
         </div>
 
@@ -939,111 +1000,65 @@ const AdminStudentDetailPage = ({ onNavigate, student }) => {
                         display: 'flex',
                         gap: '8px'
                       }}>
-                        <button
-                          onClick={() => {
-                            console.log('🔍 Botón Enviar clickeado');
-                            console.log('🔍 category.published:', category.published);
-                            console.log('🔍 category:', category);
-                            handleSendExplanations(category);
-                          }}
-                          disabled={category.published}
-                          style={{
-                            background: category.published ? safeColor('success') : safeColor('primary'),
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '6px',
-                            padding: '6px 12px',
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '12px'
+                        }}>
+                          <button
+                            onClick={() => {
+                              console.log('🔄 Toggle clicked para categoría:', category.categoryName);
+                              console.log('🔍 Modo actual:', category.modo);
+                              handleToggleQuizMode(category);
+                            }}
+                            style={{
+                              position: 'relative',
+                              width: '60px',
+                              height: '28px',
+                              borderRadius: '14px',
+                              border: 'none',
+                              cursor: 'pointer',
+                              backgroundColor: category.modo ? '#4CAF50' : '#FF9800',
+                              transition: 'all 0.3s ease',
+                              outline: 'none',
+                              display: 'flex',
+                              alignItems: 'center'
+                            }}
+                          >
+                            <div style={{
+                              position: 'absolute',
+                              top: '2px',
+                              left: category.modo ? '34px' : '2px',
+                              width: '24px',
+                              height: '24px',
+                              borderRadius: '50%',
+                              backgroundColor: 'white',
+                              transition: 'all 0.3s ease',
+                              boxShadow: '0 2px 6px rgba(0,0,0,0.3)'
+                            }} />
+                          </button>
+                          <span style={{
                             fontSize: '0.8rem',
-                            cursor: category.published ? 'not-allowed' : 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '4px',
-                            opacity: category.published ? 0.7 : 1,
-                            transition: 'all 0.2s'
-                          }}
-                        >
-                          {category.published ? '✅ Enviado' : '📤 Enviar'}
-                        </button>
-                        <button
-                          onClick={() => handleViewCategory(category)}
-                          style={{
-                            background: 'transparent',
-                    color: safeColor('textMuted'),
-                            border: `1px solid ${safeColor('border')}`,
-                            borderRadius: '6px',
-                            padding: '6px 12px',
-                            fontSize: '0.8rem',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '4px',
-                            transition: 'all 0.2s'
-                          }}
-                          onMouseEnter={(e) => {
-                            e.target.style.background = safeColor('primary') + '20';
-                            e.target.style.color = safeColor('primary');
-                            e.target.style.borderColor = safeColor('primary');
-                          }}
-                          onMouseLeave={(e) => {
-                            e.target.style.background = 'transparent';
-                            e.target.style.color = safeColor('textMuted');
-                            e.target.style.borderColor = safeColor('border');
-                          }}
-                        >
-                          👁️ Ver
-                        </button>
+                            fontWeight: '500',
+                            color: category.modo ? safeColor('success') : '#666'
+                          }}>
+                            {category.modo ? 'Quiz Habilitado' : 'Modo Estudio'}
+                          </span>
+                        </div>
                       </div>
                     </div>
                     
                     <div style={{
                       fontSize: '0.8rem',
-                      color: category.published ? safeColor('success') : safeColor('warning'),
+                      color: category.modo ? safeColor('success') : safeColor('warning'),
                       marginBottom: '8px',
                       fontWeight: '600',
                       display: 'flex',
                       alignItems: 'center',
                       gap: '4px'
                     }}>
-                      {category.published ? '✅ Explicaciones enviadas' : '⏳ Pendiente de envío'}
+                      {category.modo ? '🎮 Modo Quiz Activo' : '📚 Modo Estudio Activo'}
                     </div>
-                    
-                    {categoryExplanations[category.categoryId] ? (
-                      <textarea
-                        value={categoryExplanations[category.categoryId]}
-                        placeholder={`Cargando explicaciones para ${category.categoryName}...`}
-                        readOnly
-                        style={{
-                          width: '100%',
-                          minHeight: '120px',
-                          padding: '12px',
-                          borderRadius: '6px',
-                          border: `1px solid ${safeColor('border')}`,
-                          background: safeColor('cardBg'),
-                          color: safeColor('textPrimary'),
-                          fontSize: '0.85rem',
-                          resize: 'vertical',
-                          fontFamily: 'inherit',
-                    lineHeight: '1.4'
-                        }}
-                      />
-                    ) : (
-                      <div style={{
-                        width: '100%',
-                        minHeight: '120px',
-                        padding: '12px',
-                        borderRadius: '6px',
-                        border: `1px solid ${safeColor('border')}`,
-                        background: safeColor('cardBg'),
-                        color: safeColor('textMuted'),
-                        fontSize: '0.85rem',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontStyle: 'italic'
-                      }}>
-                        🔄 Cargando explicaciones para {category.categoryName}...
-                      </div>
-                    )}
                 </div>
               ))}
               </div>

@@ -1,76 +1,35 @@
 import { supabase } from './supabase';
 
 class ExplanationsService {
-  // Enviar explicaciones a un estudiante
+  // Enviar explicaciones a un estudiante (cambiar modo a false para que solo vea explicaciones)
   async sendExplanationsToStudent(studentId, categoryId, explanations, categoryName = null) {
     try {
-      console.log('📤 Enviando explicaciones a la base de datos...');
+      console.log('📤 Enviando explicaciones - cambiando modo a false...');
       console.log('👤 Student ID:', studentId);
       console.log('📚 Category ID:', categoryId);
       console.log('📝 Explicaciones:', explanations);
 
-      // Primero verificar si la tabla existe
-      const { error: tableError } = await supabase
-        .from('student_explanations')
-        .select('id')
-        .limit(1);
+      // Cambiar el modo a false en student_categories para que solo pueda ver explicaciones
+      const { data, error } = await supabase
+        .from('student_categories')
+        .update({ 
+          modo: false,
+          updated_at: new Date().toISOString()
+        })
+        .eq('student_id', studentId)
+        .eq('category_id', categoryId);
 
-      if (tableError) {
-        console.error('❌ Error verificando tabla:', tableError);
-        // Si la tabla no existe, usar localStorage como alternativa temporal
-        console.log('🔄 Tabla no existe, usando localStorage como alternativa...');
-        
-        try {
-          // Guardar en localStorage como alternativa temporal
-          const explanationsKey = `explanations_${studentId}_${categoryId}`;
-          const explanationData = {
-            student_id: studentId,
-            category_id: categoryId,
-            category_name: categoryName,
-            explanations: explanations,
-            sent_at: new Date().toISOString(),
-            sent_by: 'admin',
-            status: 'sent'
-          };
-          
-          localStorage.setItem(explanationsKey, JSON.stringify(explanationData));
-          
-          // También guardar en clave consolidada
-          const consolidatedKey = `student_explanations_${studentId}`;
-          const existingConsolidated = localStorage.getItem(consolidatedKey);
-          let consolidated = [];
-          
-          if (existingConsolidated) {
-            try {
-              consolidated = JSON.parse(existingConsolidated);
-            } catch (parseError) {
-              console.warn('⚠️ Error parseando explicaciones consolidadas existentes:', parseError);
-              consolidated = [];
-            }
-          }
-          
-          // Agregar o actualizar la explicación en el array consolidado
-          const existingIndex = consolidated.findIndex(exp => exp.category_id === categoryId);
-          if (existingIndex >= 0) {
-            consolidated[existingIndex] = explanationData;
-          } else {
-            consolidated.push(explanationData);
-          }
-          
-          localStorage.setItem(consolidatedKey, JSON.stringify(consolidated));
-          console.log('✅ Explicaciones guardadas en localStorage:', explanationData);
-          console.log('✅ Explicaciones consolidadas actualizadas:', consolidated);
-          return { success: true, data: explanationData, temporary: true };
-        } catch (localError) {
-          console.error('❌ Error guardando en localStorage:', localError);
-          throw localError;
-        }
+      if (error) {
+        console.error('❌ Error actualizando modo en student_categories:', error);
+        throw error;
       }
 
-      // Insertar o actualizar las explicaciones enviadas
-      const { data, error } = await supabase
-        .from('student_explanations')
-        .upsert({
+      console.log('✅ Modo cambiado a false (solo explicaciones):', data);
+      
+      // También guardar las explicaciones en localStorage para que las vea el estudiante
+      try {
+        const explanationsKey = `explanations_${studentId}_${categoryId}`;
+        const explanationData = {
           student_id: studentId,
           category_id: categoryId,
           category_name: categoryName,
@@ -78,19 +37,71 @@ class ExplanationsService {
           sent_at: new Date().toISOString(),
           sent_by: 'admin',
           status: 'sent'
-        }, {
-          onConflict: 'student_id,category_id'
-        });
+        };
+        
+        localStorage.setItem(explanationsKey, JSON.stringify(explanationData));
+        
+        // También guardar en clave consolidada
+        const consolidatedKey = `student_explanations_${studentId}`;
+        const existingConsolidated = localStorage.getItem(consolidatedKey);
+        let consolidated = [];
+        
+        if (existingConsolidated) {
+          try {
+            consolidated = JSON.parse(existingConsolidated);
+          } catch (parseError) {
+            console.warn('⚠️ Error parseando explicaciones consolidadas existentes:', parseError);
+            consolidated = [];
+          }
+        }
+        
+        // Agregar o actualizar la explicación en el array consolidado
+        const existingIndex = consolidated.findIndex(exp => exp.category_id === categoryId);
+        if (existingIndex >= 0) {
+          consolidated[existingIndex] = explanationData;
+        } else {
+          consolidated.push(explanationData);
+        }
+        
+        localStorage.setItem(consolidatedKey, JSON.stringify(consolidated));
+        console.log('✅ Explicaciones guardadas en localStorage:', explanationData);
+      } catch (localError) {
+        console.warn('⚠️ Error guardando en localStorage:', localError);
+      }
+
+      return { success: true, data: { modo: false, explanations: explanations } };
+    } catch (error) {
+      console.error('❌ Error en sendExplanationsToStudent:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // Habilitar quiz para un estudiante (cambiar modo a true para que pueda hacer quiz)
+  async enableQuizForStudent(studentId, categoryId) {
+    try {
+      console.log('🎮 Habilitando quiz - cambiando modo a true...');
+      console.log('👤 Student ID:', studentId);
+      console.log('📚 Category ID:', categoryId);
+
+      // Cambiar el modo a true en student_categories para que pueda hacer quiz
+      const { data, error } = await supabase
+        .from('student_categories')
+        .update({ 
+          modo: true,
+          updated_at: new Date().toISOString()
+        })
+        .eq('student_id', studentId)
+        .eq('category_id', categoryId);
 
       if (error) {
-        console.error('❌ Error guardando explicaciones:', error);
+        console.error('❌ Error actualizando modo en student_categories:', error);
         throw error;
       }
 
-      console.log('✅ Explicaciones guardadas en la base de datos:', data);
-      return { success: true, data };
+      console.log('✅ Modo cambiado a true (puede hacer quiz):', data);
+      return { success: true, data: { modo: true } };
     } catch (error) {
-      console.error('❌ Error en sendExplanationsToStudent:', error);
+      console.error('❌ Error en enableQuizForStudent:', error);
       return { success: false, error: error.message };
     }
   }

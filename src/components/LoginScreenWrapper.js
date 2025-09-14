@@ -62,47 +62,6 @@ const LoginScreenWrapper = ({ children, showLogo = true, logoPosition = 'top', h
         {children}
       </div>
 
-      {/* Footer con políticas de privacidad */}
-      <div style={{
-        position: 'absolute',
-        bottom: '20px',
-        left: '50%',
-        transform: 'translateX(-50%)',
-        textAlign: 'center',
-        fontSize: '0.85rem',
-        color: getColor('textSecondary'),
-        zIndex: 10
-      }}>
-        <p style={{ margin: '0 0 8px 0' }}>
-          © 2025 CarvajalAutoTech. Todos los derechos reservados.
-        </p>
-        <p style={{ margin: '0' }}>
-          <a 
-            href="#" 
-            onClick={(e) => {
-              e.preventDefault();
-              window.location.hash = '#privacy-policy';
-              window.dispatchEvent(new HashChangeEvent('hashchange'));
-            }}
-            style={{
-              color: getColor('primary'),
-              textDecoration: 'none',
-              borderBottom: `1px solid ${getColor('primary')}30`,
-              transition: 'all 0.3s ease'
-            }}
-            onMouseEnter={(e) => {
-              e.target.style.borderBottomColor = getColor('primary');
-              e.target.style.color = getColor('primary');
-            }}
-            onMouseLeave={(e) => {
-              e.target.style.borderBottomColor = getColor('primary') + '30';
-              e.target.style.color = getColor('primary');
-            }}
-          >
-            Políticas de Privacidad
-          </a>
-        </p>
-      </div>
     </div>
   );
 };

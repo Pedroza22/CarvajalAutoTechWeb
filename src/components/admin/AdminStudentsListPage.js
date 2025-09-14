@@ -577,33 +577,15 @@ const AdminStudentsListPage = ({ onNavigate }) => {
                     marginBottom: '4px',
                     display: 'block'
                   }}>
-                    Puntuación Promedio
+                    Respuestas Correctas
                   </label>
                   <div style={{
                     fontSize: '1.2rem',
                     color: safeColor('success'),
                     fontWeight: '600'
                   }}>
-                    {selectedStudent.averageScore ? `${selectedStudent.averageScore}%` : 'N/A'}
+                    {selectedStudent.correctAnswers ? `${selectedStudent.correctAnswers} de ${selectedStudent.totalQuestions || 0}` : 'Sin respuestas'}
                   </div>
-                </div>
-              </div>
-
-              <div>
-                <label style={{
-                  fontSize: '0.9rem',
-                  fontWeight: '600',
-                  color: safeColor('textMuted'),
-                  marginBottom: '4px',
-                  display: 'block'
-                }}>
-                  Fecha de Registro
-                </label>
-                <div style={{
-                  fontSize: '1rem',
-                  color: safeColor('textPrimary')
-                }}>
-                  {formatDate(selectedStudent.created_at)}
                 </div>
               </div>
 

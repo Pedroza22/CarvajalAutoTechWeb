@@ -1,6 +1,30 @@
 import { supabase } from './supabase';
 
 class StudentsService {
+  // Obtener estudiante por email
+  async getStudentByEmail(email) {
+    try {
+      console.log('🔍 Obteniendo estudiante por email:', email);
+      
+      const { data: student, error } = await supabase
+        .from('app_users_enriched')
+        .select('id, email, full_name, raw_user_meta_data')
+        .eq('email', email)
+        .single();
+
+      if (error) {
+        console.error('❌ Error obteniendo estudiante por email:', error);
+        throw error;
+      }
+
+      console.log('✅ Estudiante obtenido por email:', student);
+      return student;
+    } catch (error) {
+      console.error('❌ Error en getStudentByEmail:', error);
+      throw error;
+    }
+  }
+
   // Obtener todos los estudiantes con estadísticas
   async getAllStudents() {
     try {
@@ -33,9 +57,41 @@ class StudentsService {
           }
 
           // Calcular estadísticas
-          const totalAnswers = answers?.length || 0;
           const correctAnswers = answers?.filter(a => a.is_correct).length || 0;
-          const accuracy = totalAnswers > 0 ? Math.round((correctAnswers / totalAnswers) * 100) : 0;
+          
+          // Obtener categorías donde el estudiante ha respondido para contar preguntas totales
+          const { data: answeredCategories, error: answeredError } = await supabase
+            .from('student_answers')
+            .select(`
+              questions (
+                category_id
+              )
+            `)
+            .eq('student_id', student.id);
+
+          let totalQuestions = 0;
+          if (!answeredError && answeredCategories) {
+            // Obtener categorías únicas donde ha respondido
+            const uniqueCategoryIds = [...new Set(
+              answeredCategories
+                .map(a => a.questions?.category_id)
+                .filter(Boolean)
+            )];
+
+            // Contar preguntas en cada categoría donde ha respondido
+            for (const categoryId of uniqueCategoryIds) {
+              const { data: questions, error: questionsError } = await supabase
+                .from('questions')
+                .select('id')
+                .eq('category_id', categoryId);
+              
+              if (!questionsError && questions) {
+                totalQuestions += questions.length;
+              }
+            }
+          }
+          
+          const accuracy = totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0;
           
           // Obtener última actividad
           const lastActivity = answers?.length > 0 
@@ -60,9 +116,9 @@ class StudentsService {
             name: this.getDisplayName(student),
             email: student.email,
             studentId: student.raw_user_meta_data?.student_id || null,
-            created_at: student.raw_user_meta_data?.created_at || null,
             totalQuizzes,
-            totalAnswers,
+            totalQuestions, // Total de preguntas disponibles en sus categorías
+            totalAnswers: answers?.length || 0, // Total de respuestas dadas
             correctAnswers,
             averageScore: accuracy,
             lastActivity,
@@ -76,8 +132,8 @@ class StudentsService {
             name: this.getDisplayName(student),
             email: student.email,
             studentId: student.raw_user_meta_data?.student_id || null,
-            created_at: student.raw_user_meta_data?.created_at || null,
             totalQuizzes: 0,
+            totalQuestions: 0,
             totalAnswers: 0,
             correctAnswers: 0,
             averageScore: 0,
@@ -116,10 +172,10 @@ class StudentsService {
       const correctAnswers = answers?.filter(a => a.is_correct).length || 0;
       const accuracy = totalAnswers > 0 ? Math.round((correctAnswers / totalAnswers) * 100) : 0;
       
-      // Obtener última actividad
+      // Obtener última actividad (fecha real, no string relativo)
       const lastActivity = answers?.length > 0 
-        ? this.getTimeAgo(answers.sort((a, b) => new Date(b.answered_at) - new Date(a.answered_at))[0].answered_at)
-        : 'Sin actividad';
+        ? answers.sort((a, b) => new Date(b.answered_at) - new Date(a.answered_at))[0].answered_at
+        : null;
 
       const stats = {
         totalAnswers,
@@ -203,6 +259,7 @@ class StudentsService {
         .select(`
           category_id,
           published,
+          modo,
           categories (
             name
           )
@@ -218,6 +275,7 @@ class StudentsService {
       const categoryStats = [];
       for (const category of categories || []) {
         try {
+          // Obtener todas las respuestas de esta categoría
           const { data: categoryAnswers, error: categoryAnswersError } = await supabase
             .from('student_answers')
             .select(`
@@ -228,19 +286,58 @@ class StudentsService {
               )
             `)
             .eq('student_id', studentId)
-            .eq('questions.category_id', category.category_id);
+            .eq('questions.category_id', category.category_id)
+            .order('answered_at', { ascending: false });
 
           if (categoryAnswersError) {
             console.warn(`⚠️ Error obteniendo respuestas de categoría ${category.category_id}:`, categoryAnswersError);
             continue;
           }
 
-          const totalQuestions = categoryAnswers?.length || 0;
-          const correctAnswers = categoryAnswers?.filter(a => a.is_correct).length || 0;
+          // Agrupar respuestas por sesión de quiz (mismo día)
+          const quizSessions = {};
+          categoryAnswers?.forEach(answer => {
+            const date = new Date(answer.answered_at).toDateString();
+            if (!quizSessions[date]) {
+              quizSessions[date] = [];
+            }
+            quizSessions[date].push(answer);
+          });
+
+          // Obtener la sesión más reciente
+          const latestSessionDate = Object.keys(quizSessions).sort().pop();
+          const latestSession = quizSessions[latestSessionDate] || [];
+
+          // Contar preguntas reales de la categoría
+          const { data: categoryQuestions, error: questionsError } = await supabase
+            .from('questions')
+            .select('id')
+            .eq('category_id', category.category_id);
+          
+          const totalQuestions = categoryQuestions?.length || 0;
+          const correctAnswers = latestSession.filter(a => a.is_correct).length || 0;
+          const incorrectAnswers = latestSession.length - correctAnswers; // Respuestas dadas menos correctas
           const accuracy = totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0;
-          const lastAnswered = totalQuestions > 0 
-            ? this.getTimeAgo(categoryAnswers.sort((a, b) => new Date(b.answered_at) - new Date(a.answered_at))[0].answered_at)
+          
+          // Obtener fecha y tiempo del quiz más reciente
+          const mostRecentAnswer = latestSession[0];
+          const completedAt = mostRecentAnswer?.answered_at || null;
+          const totalTimeMinutes = totalQuestions * 2; // Estimación simple por ahora
+          
+          const lastAnswered = completedAt 
+            ? this.getTimeAgo(completedAt)
             : 'Sin respuestas';
+          
+          // Formatear fecha para mostrar en el admin
+          const formattedDate = completedAt 
+            ? new Date(completedAt).toLocaleDateString('es-ES', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+              })
+            : 'Sin fecha';
 
           categoryStats.push({
             categoryId: category.category_id,
@@ -248,9 +345,14 @@ class StudentsService {
             totalQuestions,
             answered: totalQuestions,
             correct: correctAnswers,
+            incorrect: incorrectAnswers,
             accuracy,
             published: category.published || false, // Usar el estado real de publicación
-            lastAnswered
+            modo: category.modo !== undefined ? category.modo : true, // Usar el modo real (default true)
+            lastAnswered,
+            completedAt,
+            formattedDate,
+            totalTimeMinutes
           });
         } catch (error) {
           console.warn(`⚠️ Error procesando categoría ${category.category_id}:`, error);
@@ -281,6 +383,24 @@ class StudentsService {
     try {
       console.log(`🔍 Cambiando publicación de categoría ${categoryId} para estudiante ${studentId} a ${published}`);
       
+      // Obtener el usuario actual para verificar que es admin
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        throw new Error('Usuario no autenticado');
+      }
+
+      // Verificar que el usuario es admin
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single();
+
+      if (!profile || profile.role !== 'admin') {
+        throw new Error('Solo los administradores pueden cambiar la publicación de categorías');
+      }
+
       const { data, error } = await supabase
         .from('student_categories')
         .update({ published })
@@ -295,10 +415,10 @@ class StudentsService {
       }
 
       console.log('✅ Publicación cambiada:', data);
-      return data;
+      return { success: true, data };
     } catch (error) {
       console.error('❌ Error en toggleCategoryPublication:', error);
-      throw error;
+      return { success: false, error: error.message };
     }
   }
 

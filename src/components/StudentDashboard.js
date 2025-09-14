@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { AppConstants } from '../utils/constants';
 import CustomButton from './CustomButton';
-import StudentStatsCard from './StudentStatsCard';
 import CategoryQuizCard from './CategoryQuizCard';
-import StudentExplanations from './StudentExplanations';
+import StudentsService from '../services/StudentsService';
+import QuizProgressService from '../services/QuizProgressService';
 import StatisticsService from '../services/StatisticsService';
 
 // Fallback colors en caso de que AppConstants no esté disponible
@@ -36,21 +36,37 @@ const StudentDashboard = ({
   // Estados para las nuevas funcionalidades
   const [categoryPublicationStatus, setCategoryPublicationStatus] = useState({});
   const [categoryStats, setCategoryStats] = useState({});
-  const [recentActivity, setRecentActivity] = useState([]);
-  const [loadingActivity, setLoadingActivity] = useState(true);
   const [studentStats, setStudentStats] = useState({
     totalAnswered: 0,
     correctAnswers: 0,
     incorrectAnswers: 0,
-    accuracyPercentage: 0,
-    streak: 0
+    accuracyPercentage: 0
   });
+  const [studentId, setStudentId] = useState(null);
   const categoriesCount = categoriesList.length;
+
+  // Obtener studentId por email
+  useEffect(() => {
+    const loadStudentId = async () => {
+      if (!user?.email) return;
+      
+      try {
+        console.log('🔍 Obteniendo studentId para email:', user.email);
+        const student = await StudentsService.getStudentByEmail(user.email);
+        setStudentId(student.id);
+        console.log('✅ StudentId obtenido:', student.id);
+      } catch (error) {
+        console.error('❌ Error obteniendo studentId:', error);
+      }
+    };
+
+    loadStudentId();
+  }, [user?.email]);
 
   // Cargar estado de publicación y estadísticas por categoría
   useEffect(() => {
     const loadCategoryData = async () => {
-      if (!user?.id) return;
+      if (!user?.id || !studentId) return;
       
       try {
         const [publicationStatus, stats] = await Promise.all([
@@ -70,19 +86,35 @@ const StudentDashboard = ({
         const statsMap = {};
         if (stats && stats.categoryStats) {
           // Mapear por nombre de categoría a ID
-          Object.keys(stats.categoryStats).forEach(categoryName => {
+          for (const categoryName of Object.keys(stats.categoryStats)) {
             const categoryStat = stats.categoryStats[categoryName];
             // Buscar la categoría por nombre en la lista de categorías
             const category = categoriesList.find(cat => cat.name === categoryName);
             if (category) {
+              // Verificar si hay progreso guardado en la base de datos
+              let currentProgress = categoryStat.total;
+              let totalQuestions = categoryStat.totalQuestions || 0;
+              
+              try {
+                const progressResult = await QuizProgressService.getQuizProgress(user.id, category.id);
+                if (progressResult.success && progressResult.data && progressResult.data.quiz_progress) {
+                  // Si hay progreso guardado, usar el número de pregunta actual
+                  currentProgress = progressResult.data.quiz_progress; // Ya viene como número de pregunta (1-based)
+                  console.log(`📊 Progreso guardado para ${categoryName}: ${currentProgress}/${totalQuestions}`);
+                }
+              } catch (error) {
+                console.warn('⚠️ Error obteniendo progreso guardado:', error);
+              }
+              
               statsMap[category.id] = {
                 totalAnswers: categoryStat.total,
                 correctAnswers: categoryStat.correct,
                 successPercentage: categoryStat.total > 0 ? Math.round((categoryStat.correct / categoryStat.total) * 100) : 0,
-                questionCount: 0 // Se puede calcular si es necesario
+                questionCount: totalQuestions,
+                currentProgress: currentProgress // Progreso actual (incluyendo pausado)
               };
             }
-          });
+          }
         }
         
         // Actualizar las estadísticas generales del estudiante
@@ -91,7 +123,6 @@ const StudentDashboard = ({
           correctAnswers: stats?.correctAnswers || 0,
           incorrectAnswers: stats?.incorrectAnswers || 0,
           accuracyPercentage: stats?.accuracyPercentage || 0,
-          streak: 0 // Se puede implementar si es necesario
         });
         
         setCategoryPublicationStatus(publicationStatusMap);
@@ -102,27 +133,8 @@ const StudentDashboard = ({
     };
 
     loadCategoryData();
-  }, [user?.id, categoriesList]);
+  }, [user?.id, studentId, categoriesList]);
 
-  // Cargar actividad reciente del estudiante
-  useEffect(() => {
-    const loadRecentActivity = async () => {
-      if (!user?.id) return;
-      
-      try {
-        setLoadingActivity(true);
-        const activity = await StatisticsService.getRecentActivity(user.id, 7);
-        setRecentActivity(activity || []);
-      } catch (error) {
-        console.error('❌ Error cargando actividad reciente:', error);
-        setRecentActivity([]);
-      } finally {
-        setLoadingActivity(false);
-      }
-    };
-
-    loadRecentActivity();
-  }, [user?.id]);
 
   return (
     <div style={{
@@ -221,46 +233,8 @@ const StudentDashboard = ({
               </p>
             </div>
           </div>
-          <div style={{ marginTop: '16px', display: 'flex', alignItems: 'center' }}>
-            <span style={{ marginRight: '4px' }}>🔥</span>
-            <span style={{ fontWeight: '600' }}>
-              Racha de {studentStats?.streak || 0} días
-            </span>
-          </div>
         </div>
 
-        {/* Stats Cards */}
-        <div style={{ 
-          display: 'grid', 
-          gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-          gap: '24px',
-          marginBottom: '40px'
-        }}>
-          <StudentStatsCard
-            title="Total Respondidas"
-            value={studentStats?.totalAnswered?.toString() || '0'}
-            icon="❓"
-            color={safeColor('primary')}
-          />
-          <StudentStatsCard
-            title="Correctas"
-            value={studentStats?.correctAnswers?.toString() || '0'}
-            icon="✓"
-            color={safeColor('success')}
-          />
-          <StudentStatsCard
-            title="Incorrectas"
-            value={studentStats?.incorrectAnswers?.toString() || '0'}
-            icon="✗"
-            color={safeColor('error')}
-          />
-          <StudentStatsCard
-            title="Precisión"
-            value={`${studentStats?.accuracyPercentage?.toFixed(1) || 0}%`}
-            icon="📊"
-            color={safeColor('warning')}
-          />
-        </div>
 
         {/* Categories Section */}
         <div style={{
@@ -330,8 +304,8 @@ const StudentDashboard = ({
                     category={{
                       ...category,
                       questionCount: stats.questionCount,
-                      completed: stats.totalAnswers,
-                      lastScore: isPublished && stats.totalAnswers > 0 ? stats.successPercentage : null
+                      completed: stats.currentProgress, // Usar progreso actual (incluyendo pausado)
+                      lastScore: null // No mostrar puntuación hasta completar el quiz
                     }}
                     onStartQuiz={() => {
                       if (onNavigate) {
@@ -348,185 +322,49 @@ const StudentDashboard = ({
         </div>
 
         {/* Recent Activity */}
-        <div style={{
-          background: safeColor('cardBg'),
-          borderRadius: '20px',
-          padding: '32px',
-          marginTop: '24px',
-          border: `1px solid ${safeColor('border')}`
-        }}>
-          <h3 style={{
-            fontSize: '1.5rem',
-            fontWeight: '700',
-            marginBottom: '16px',
-            color: safeColor('textPrimary')
-          }}>
-            Progreso Reciente
-          </h3>
-          
-          {loadingActivity ? (
-            <div style={{
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center',
-              padding: '40px'
-            }}>
-              <div style={{ fontSize: '18px', color: safeColor('textMuted') }}>
-                Cargando actividad reciente...
-              </div>
-            </div>
-          ) : recentActivity.length === 0 ? (
-            <div style={{
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center',
-              padding: '40px'
-            }}>
-              <div style={{ fontSize: '18px', color: safeColor('textMuted') }}>
-                No hay actividad reciente
-              </div>
-            </div>
-          ) : (
-            <div style={{
-              background: safeColor('cardBg'),
-              borderRadius: '16px',
-              border: `1px solid ${safeColor('border')}4D`
-            }}>
-              {recentActivity.map((activity, index) => (
-                <div
-                  key={activity.categoryId}
-                  style={{
-                    padding: '16px',
-                    borderBottom: index < recentActivity.length - 1 ? `1px solid ${safeColor('border')}33` : 'none',
-                    display: 'flex',
-                    alignItems: 'center'
-                  }}
-                >
-                  <div style={{
-                    width: '40px',
-                    height: '40px',
-                    background: `${activity.color}20`,
-                    borderRadius: '10px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    marginRight: '16px',
-                    fontSize: '20px'
-                  }}>
-                    {activity.icon}
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <h4 style={{
-                      fontSize: '1rem',
-                      fontWeight: '600',
-                      margin: '0 0 4px 0',
-                      color: safeColor('textPrimary')
-                    }}>
-                      Quiz de {activity.categoryName}
-                    </h4>
-                    <p style={{
-                      fontSize: '0.875rem',
-                      color: safeColor('textMuted'),
-                      margin: '0 0 4px 0'
-                    }}>
-                      {activity.correctAnswers}/{activity.totalAnswers} correctas - {activity.accuracy}%
-                    </p>
-                    <p style={{
-                      fontSize: '0.75rem',
-                      color: safeColor('textMuted'),
-                      margin: 0
-                    }}>
-                      {activity.timeAgo}
-                    </p>
-                  </div>
-                  <div style={{
-                    padding: '4px 8px',
-                    background: `${activity.color}20`,
-                    borderRadius: '12px',
-                    border: `1px solid ${activity.color}40`
-                  }}>
-                    <span style={{
-                      fontSize: '0.75rem',
-                      fontWeight: '600',
-                      color: activity.color
-                    }}>
-                      {activity.accuracy}%
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
 
-        {/* Sección de Explicaciones */}
-        <div style={{
-          background: safeColor('cardBg'),
-          borderRadius: '16px',
-          padding: '24px',
-          border: `1px solid ${safeColor('border')}`,
-          marginTop: '24px'
-        }}>
-          <h3 style={{
-            fontSize: '1.25rem',
-            fontWeight: '600',
-            margin: '0 0 16px 0',
-            color: safeColor('textPrimary'),
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px'
-          }}>
-            📚 Explicaciones Recibidas
-          </h3>
-          <StudentExplanations studentId={user?.id} />
-        </div>
       </div>
 
       {/* Footer con políticas de privacidad */}
-      {useMemo(() => {
-        console.log('🔄 Renderizando footer de StudentDashboard');
-        return (
-          <div style={{
-            padding: '16px 24px',
-            borderTop: `1px solid ${safeColor('border')}`,
-            background: safeColor('dark'),
-            textAlign: 'center',
-            fontSize: '0.85rem',
-            color: safeColor('textSecondary'),
-            marginTop: '32px'
-          }}>
-            <p style={{ margin: '0 0 8px 0' }}>
-              © 2025 CarvajalAutoTech. Todos los derechos reservados.
-            </p>
-            <p style={{ margin: '0' }}>
-              <a 
-                href="#" 
-                onClick={(e) => {
-                  e.preventDefault();
-                  window.location.hash = '#privacy-policy';
-                  window.dispatchEvent(new HashChangeEvent('hashchange'));
-                }}
-                style={{
-                  color: safeColor('primary'),
-                  textDecoration: 'none',
-                  borderBottom: `1px solid ${safeColor('primary')}30`,
-                  transition: 'all 0.3s ease'
-                }}
-                onMouseEnter={(e) => {
-                  e.target.style.borderBottomColor = safeColor('primary');
-                  e.target.style.color = safeColor('primary');
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.borderBottomColor = safeColor('primary') + '30';
-                  e.target.style.color = safeColor('primary');
-                }}
-              >
-                Políticas de Privacidad
-              </a>
-            </p>
-          </div>
-        );
-      }, [safeColor])}
+      <div style={{
+        padding: '16px 24px',
+        borderTop: `1px solid ${safeColor('border')}`,
+        background: safeColor('dark'),
+        textAlign: 'center',
+        fontSize: '0.85rem',
+        color: safeColor('textSecondary'),
+        marginTop: '32px'
+      }}>
+        <p style={{ margin: '0 0 8px 0' }}>
+          © 2025 CarvajalAutoTech. Todos los derechos reservados.
+        </p>
+        <p style={{ margin: '0' }}>
+          <a 
+            href="#" 
+            onClick={(e) => {
+              e.preventDefault();
+              window.location.hash = '#privacy-policy';
+              window.dispatchEvent(new HashChangeEvent('hashchange'));
+            }}
+            style={{
+              color: safeColor('primary'),
+              textDecoration: 'none',
+              borderBottom: `1px solid ${safeColor('primary')}30`,
+              transition: 'all 0.3s ease'
+            }}
+            onMouseEnter={(e) => {
+              e.target.style.borderBottomColor = safeColor('primary');
+              e.target.style.color = safeColor('primary');
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.borderBottomColor = safeColor('primary') + '30';
+              e.target.style.color = safeColor('primary');
+            }}
+          >
+            Políticas de Privacidad
+          </a>
+        </p>
+      </div>
     </div>
   );
 };

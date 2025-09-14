@@ -676,7 +676,8 @@ class StatisticsService {
     try {
       console.log('🔍 Obteniendo estadísticas para estudiante:', studentId);
       
-      const { data, error } = await supabase
+      // Obtener respuestas del estudiante
+      const { data: answers, error: answersError } = await supabase
         .from('student_answers')
         .select(`
           id,
@@ -691,12 +692,57 @@ class StatisticsService {
         `)
         .eq('student_id', studentId);
 
-      if (error) {
-        console.error('❌ Error obteniendo estadísticas del estudiante:', error);
-        throw error;
+      if (answersError) {
+        console.error('❌ Error obteniendo estadísticas del estudiante:', answersError);
+        throw answersError;
       }
 
-      if (!data || data.length === 0) {
+      // Obtener categorías asignadas al estudiante
+      const { data: categories, error: categoriesError } = await supabase
+        .from('student_categories')
+        .select(`
+          category_id,
+          categories (
+            name
+          )
+        `)
+        .eq('student_id', studentId);
+
+      if (categoriesError) {
+        console.warn('⚠️ Error obteniendo categorías del estudiante:', categoriesError);
+      }
+
+      // Obtener número total de preguntas por categoría
+      const categoryQuestionCounts = {};
+      if (categories) {
+        for (const category of categories) {
+          const { data: questions, error: questionsError } = await supabase
+            .from('questions')
+            .select('id')
+            .eq('category_id', category.category_id);
+
+          if (!questionsError && questions) {
+            categoryQuestionCounts[category.categories?.name] = questions.length;
+          }
+        }
+      }
+
+      // Crear categoryStats con información de todas las categorías asignadas
+      const categoryStats = {};
+      
+      // Primero, agregar todas las categorías asignadas con 0 respuestas
+      if (categories) {
+        categories.forEach(category => {
+          const categoryName = category.categories?.name || 'Sin categoría';
+          categoryStats[categoryName] = { 
+            total: 0, 
+            correct: 0,
+            totalQuestions: categoryQuestionCounts[categoryName] || 0
+          };
+        });
+      }
+
+      if (!answers || answers.length === 0) {
         console.log('⚠️ No hay respuestas para el estudiante');
         return {
           totalAnswers: 0,
@@ -704,26 +750,24 @@ class StatisticsService {
           incorrectAnswers: 0,
           accuracy: 0,
           accuracyPercentage: 0,
-          categoryStats: {},
+          categoryStats,
           lastActivity: null
         };
       }
 
-      const totalAnswers = data.length;
-      const correctAnswers = data.filter(a => a.is_correct).length;
+      const totalAnswers = answers.length;
+      const correctAnswers = answers.filter(a => a.is_correct).length;
       const incorrectAnswers = totalAnswers - correctAnswers;
       const accuracy = totalAnswers > 0 ? Math.round((correctAnswers / totalAnswers) * 100) : 0;
 
-      // Agrupar por categoría
-      const categoryStats = {};
-      data.forEach(answer => {
+      // Agrupar respuestas por categoría (actualizar el categoryStats ya inicializado)
+      answers.forEach(answer => {
         const categoryName = answer.questions?.categories?.name || 'Sin categoría';
-        if (!categoryStats[categoryName]) {
-          categoryStats[categoryName] = { total: 0, correct: 0 };
-        }
-        categoryStats[categoryName].total++;
-        if (answer.is_correct) {
-          categoryStats[categoryName].correct++;
+        if (categoryStats[categoryName]) {
+          categoryStats[categoryName].total++;
+          if (answer.is_correct) {
+            categoryStats[categoryName].correct++;
+          }
         }
       });
 
@@ -734,7 +778,7 @@ class StatisticsService {
         accuracy,
         accuracyPercentage: accuracy,
         categoryStats,
-        lastActivity: data.length > 0 ? data[0].answered_at : null
+        lastActivity: answers.length > 0 ? answers[0].answered_at : null
       };
 
       console.log('✅ Estadísticas del estudiante obtenidas:', result);

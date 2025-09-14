@@ -260,10 +260,10 @@ class StudentCategoriesService {
     try {
       console.log('💾 Guardando respuestas del estudiante:', studentId, 'para categoría:', categoryId);
       
-      // Obtener las respuestas correctas para calcular is_correct
+      // Obtener las preguntas completas para calcular is_correct
       const { data: questions, error: questionsError } = await supabase
         .from('questions')
-        .select('id, correct_answer')
+        .select('id, correct_answer, options')
         .eq('category_id', categoryId);
 
       if (questionsError) {
@@ -280,8 +280,26 @@ class StudentCategoriesService {
       // Preparar los datos para insertar con is_correct
       const answersToInsert = Object.entries(answers).map(([questionId, answer]) => {
         const correctAnswer = correctAnswersMap[questionId];
-        // Si la respuesta es 'TIMEOUT' o no está definida, marcar como incorrecta
-        const isCorrect = answer && answer !== 'TIMEOUT' && answer === correctAnswer;
+        
+        // Obtener la pregunta completa para hacer la comparación correcta
+        const question = questions.find(q => q.id === questionId);
+        let isCorrect = false;
+        
+        if (answer && answer !== 'TIMEOUT' && question) {
+          // Si correct_answer es una letra (A, B, C, D), comparar directamente
+          if (['A', 'B', 'C', 'D'].includes(correctAnswer)) {
+            isCorrect = answer === correctAnswer;
+          } else {
+            // Si correct_answer es texto completo, obtener la opción correspondiente
+            const optionIndex = String.fromCharCode(65 + question.options.indexOf(correctAnswer));
+            isCorrect = answer === optionIndex;
+          }
+        }
+        
+        console.log(`🔍 Pregunta ${questionId}:`);
+        console.log(`   Respuesta del estudiante: "${answer}"`);
+        console.log(`   Respuesta correcta: "${correctAnswer}"`);
+        console.log(`   Es correcta: ${isCorrect}`);
         
         return {
           student_id: studentId,
@@ -289,21 +307,28 @@ class StudentCategoriesService {
           answer: answer || 'NO_ANSWER',
           is_correct: isCorrect,
           answered_at: new Date().toISOString(),
-          total_time_minutes: totalTimeMinutes
+          time_spent: null // No guardamos tiempo por pregunta individual por ahora
         };
       });
 
-      const { data, error } = await supabase
-        .from('student_answers')
-        .upsert(answersToInsert, { 
-          onConflict: 'student_id,question_id',
-          ignoreDuplicates: false 
-        });
-
-      if (error) {
-        console.error('❌ Error guardando respuestas:', error);
-        throw error;
+      // Insertar las respuestas una por una para evitar conflictos
+      const results = [];
+      for (const answerData of answersToInsert) {
+        const { data, error } = await supabase
+          .from('student_answers')
+          .upsert(answerData, { 
+            onConflict: 'student_id,question_id',
+            ignoreDuplicates: false 
+          });
+        
+        if (error) {
+          console.error('❌ Error guardando respuesta individual:', error);
+          throw error;
+        }
+        results.push(data);
       }
+
+      console.log('✅ Respuestas guardadas exitosamente:', results.length);
 
       console.log('✅ Respuestas guardadas/actualizadas:', answersToInsert.length);
       console.log('📝 Detalles de respuestas:', answersToInsert.map(a => ({
@@ -311,7 +336,7 @@ class StudentCategoriesService {
         answer: a.answer,
         is_correct: a.is_correct
       })));
-      return data;
+      return { success: true, data: results };
     } catch (error) {
       console.error('❌ Error en saveStudentAnswers:', error);
       throw error;
@@ -387,8 +412,7 @@ class StudentCategoriesService {
       // Intentar actualizar solo con campos básicos que sabemos que existen
       const updateData = {
         student_id: studentId,
-        category_id: categoryId,
-        updated_at: new Date().toISOString()
+        category_id: categoryId
       };
 
       // Solo agregar campos si existen en la tabla
@@ -414,6 +438,31 @@ class StudentCategoriesService {
     } catch (error) {
       console.error('❌ Error en notifyQuizCompletion:', error);
       return { success: false, error: error.message };
+    }
+  }
+
+  // Verificar si las explicaciones están habilitadas para un estudiante y categoría
+  async checkExplanationsEnabled(studentId, categoryId) {
+    try {
+      console.log('🔍 Verificando si explicaciones están habilitadas:', { studentId, categoryId });
+      
+      const { data, error } = await supabase
+        .from('student_categories')
+        .select('published')
+        .eq('student_id', studentId)
+        .eq('category_id', categoryId)
+        .single();
+
+      if (error) {
+        console.warn('⚠️ Error verificando estado de explicaciones:', error);
+        return false; // Por defecto, asumir que no están habilitadas
+      }
+
+      console.log('📊 Estado de explicaciones:', data?.published || false);
+      return data?.published || false;
+    } catch (error) {
+      console.error('❌ Error en checkExplanationsEnabled:', error);
+      return false; // Por defecto, asumir que no están habilitadas
     }
   }
 }

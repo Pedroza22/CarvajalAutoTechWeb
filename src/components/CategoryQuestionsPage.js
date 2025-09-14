@@ -1,12 +1,21 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { getColor } from '../utils/constants';
 import StudentCategoriesService from '../services/StudentCategoriesService';
+import StudentsService from '../services/StudentsService';
+import { supabase } from '../services/supabase';
+import QuizProgressService from '../services/QuizProgressService';
 import CustomButton from './CustomButton';
+import QuizExplanationsView from './QuizExplanationsView';
+import CustomModal from './CustomModal';
+import useModal from '../hooks/useModal';
 
 const CategoryQuestionsPage = ({ category, user, onBack, onStartQuiz }) => {
   const [questions, setQuestions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [quizStarted, setQuizStarted] = useState(false);
+  
+  // Hook para manejar modales
+  const { modalState, showSuccess, showError, showWarning, showInfo, showConfirm, hideModal } = useModal();
   const [studentAnswers, setStudentAnswers] = useState({});
   const [quizCompleted, setQuizCompleted] = useState(false);
   const [showResults, setShowResults] = useState(false);
@@ -17,6 +26,10 @@ const CategoryQuestionsPage = ({ category, user, onBack, onStartQuiz }) => {
   const [timerActive, setTimerActive] = useState(false);
   const [quizPaused, setQuizPaused] = useState(false);
   const [quizStartTime, setQuizStartTime] = useState(null);
+  const [explanationsEnabled, setExplanationsEnabled] = useState(false);
+  const [showExplanations, setShowExplanations] = useState(false);
+  const [quizMode, setQuizMode] = useState(true); // true = puede hacer quiz, false = solo explicaciones
+  const [studentId, setStudentId] = useState(null);
   const [stats, setStats] = useState({
     totalAnswers: 0,
     correctAnswers: 0,
@@ -32,12 +45,40 @@ const CategoryQuestionsPage = ({ category, user, onBack, onStartQuiz }) => {
       // Solo cargar estadísticas inicialmente, no las preguntas
       const statsData = await StudentCategoriesService.getCategoryStats(user.id, category.id);
       setStats(statsData);
+      
+      // Verificar si las explicaciones están habilitadas y el modo del quiz (solo si tenemos studentId)
+      if (studentId) {
+        const explanationsStatus = await StudentCategoriesService.checkExplanationsEnabled(studentId, category.id);
+        setExplanationsEnabled(explanationsStatus);
+        
+        // Verificar el modo del quiz
+        const { data: categoryData, error: categoryError } = await supabase
+          .from('student_categories')
+          .select('modo')
+          .eq('student_id', studentId)
+          .eq('category_id', category.id)
+          .single();
+          
+        if (!categoryError && categoryData) {
+          const currentQuizMode = categoryData.modo !== false; // Default true si no está definido
+          setQuizMode(currentQuizMode);
+          console.log('📊 Modo del quiz:', currentQuizMode ? 'Puede hacer quiz' : 'Solo explicaciones');
+          
+          // Si modo = false, mostrar solo explicaciones
+          if (!currentQuizMode) {
+            setShowExplanations(true);
+            setQuizCompleted(true);
+          }
+        }
+        
+        console.log('📊 Explicaciones habilitadas:', explanationsStatus);
+      }
     } catch (error) {
       console.error('❌ Error cargando datos de categoría:', error);
     } finally {
       setLoading(false);
     }
-  }, [category?.id, user?.id]);
+  }, [category?.id, user?.id, studentId]);
 
   const loadQuestions = useCallback(async () => {
     if (!category?.id || !user?.id) return;
@@ -66,36 +107,47 @@ const CategoryQuestionsPage = ({ category, user, onBack, onStartQuiz }) => {
       // Verificar que user y category estén disponibles
       if (!user?.id || !category?.id) {
         console.error('❌ User o category no disponible para pausar quiz');
-        alert('Error: No se puede pausar el quiz. Información de usuario o categoría no disponible.');
+        showError('Error', 'No se puede pausar el quiz. Información de usuario o categoría no disponible.');
         return;
       }
       
-      // Guardar progreso actual en localStorage
-      const quizProgress = {
-        studentId: user.id,
-        categoryId: category.id,
+      // Guardar progreso actual en la base de datos
+      const result = await QuizProgressService.saveQuizProgress(
+        user.id, // Usar user.id (auth.uid()) para consistencia con RLS
+        category.id,
         currentQuestionIndex,
-        studentAnswers,
-        startTime: quizStartTime,
-        pausedAt: new Date().toISOString(),
-        questionsCount: questions?.length || 0
-      };
+        questions?.length || 0
+      );
       
-      localStorage.setItem(`quiz_progress_${user.id}_${category.id}`, JSON.stringify(quizProgress));
-      console.log('💾 Progreso del quiz guardado en localStorage');
+      if (!result.success) {
+        throw new Error(result.error);
+      }
       
+      console.log('💾 Progreso del quiz guardado en base de datos');
       setQuizPaused(true);
       
-      // Mostrar mensaje de confirmación
-      alert('El quiz ha sido pausado. Tu progreso se ha guardado. Puedes regresar cuando quieras para continuar desde donde te quedaste.');
-      
-      // Regresar al dashboard
-      if (onBack) {
-        onBack();
-      }
+      // Mostrar modal personalizado
+      showInfo(
+        'Quiz Pausado',
+        'Tu progreso se ha guardado automáticamente. Puedes regresar cuando quieras para continuar desde donde te quedaste.',
+        [
+          {
+            text: 'Continuar',
+            variant: 'primary',
+            onClick: () => {
+              if (onBack) {
+                onBack();
+              }
+            }
+          }
+        ]
+      );
     } catch (error) {
       console.error('❌ Error pausando quiz:', error);
-      alert('Error al pausar el quiz. Por favor, intenta de nuevo.');
+      showError(
+        'Error',
+        'No se pudo pausar el quiz. Por favor, intenta de nuevo.'
+      );
     }
   };
 
@@ -239,13 +291,26 @@ const CategoryQuestionsPage = ({ category, user, onBack, onStartQuiz }) => {
       
       // Calcular estadísticas
       const stats = await StudentCategoriesService.calculateQuizStats(user.id, category.id, studentAnswers);
-      setQuizStats(stats);
+      
+      // Agregar información adicional a las estadísticas
+      const enrichedStats = {
+        ...stats,
+        totalTimeMinutes: totalTimeMinutes,
+        completedAt: new Date().toISOString(),
+        categoryName: category?.name || 'Categoría'
+      };
+      
+      setQuizStats(enrichedStats);
       
       setQuizCompleted(true);
-      setShowResults(true); // Mostrar resultados y explicaciones
+      // Solo mostrar resultados si estamos en modo estudio (modo = false)
+      // Si estamos en modo quiz (modo = true), solo regresar al dashboard
+      if (!quizMode) {
+        setShowResults(true); // Mostrar resultados y explicaciones solo en modo estudio
+      }
       
       // Limpiar progreso guardado ya que el quiz está completado
-      localStorage.removeItem(`quiz_progress_${user.id}_${category.id}`);
+      await QuizProgressService.clearQuizProgress(user.id, category.id);
       
       console.log('✅ Quiz completado y guardado:', stats);
       
@@ -270,11 +335,17 @@ const CategoryQuestionsPage = ({ category, user, onBack, onStartQuiz }) => {
         accuracy: 0,
         completionRate: Math.round((totalAnswered / questions.length) * 100),
         score: 0,
-        maxScore: questions.length
+        maxScore: questions.length,
+        totalTimeMinutes: 0, // No podemos calcular tiempo sin conexión
+        completedAt: new Date().toISOString(),
+        categoryName: category?.name || 'Categoría'
       };
       setQuizStats(localStats);
       setQuizCompleted(true);
-      setShowResults(true); // Mostrar resultados incluso en caso de error
+      // Solo mostrar resultados si estamos en modo estudio (modo = false)
+      if (!quizMode) {
+        setShowResults(true); // Mostrar resultados incluso en caso de error, solo en modo estudio
+      }
     } finally {
       setSavingAnswers(false);
     }
@@ -345,41 +416,64 @@ const CategoryQuestionsPage = ({ category, user, onBack, onStartQuiz }) => {
 
   const safeColor = (colorName) => getColor(colorName) || '#ffffff';
 
+
+  // Obtener studentId por email
+  useEffect(() => {
+    const loadStudentId = async () => {
+      if (!user?.email) return;
+      
+      try {
+        console.log('🔍 Obteniendo studentId para email:', user.email);
+        const student = await StudentsService.getStudentByEmail(user.email);
+        setStudentId(student.id);
+        console.log('✅ StudentId obtenido:', student.id);
+      } catch (error) {
+        console.error('❌ Error obteniendo studentId:', error);
+      }
+    };
+
+    loadStudentId();
+  }, [user?.email]);
+
   useEffect(() => {
     loadCategoryData();
     
     // Verificar si hay progreso guardado para reanudar
-    const checkSavedProgress = () => {
+    const checkSavedProgress = async () => {
       if (!user?.id || !category?.id) return;
       
-      const savedProgress = localStorage.getItem(`quiz_progress_${user.id}_${category.id}`);
-      if (savedProgress) {
-        try {
-          const progress = JSON.parse(savedProgress);
-          console.log('🔍 Progreso guardado encontrado:', progress);
+      try {
+        const result = await QuizProgressService.getQuizProgress(user.id, category.id);
+        
+        if (result.success && result.data && result.data.quiz_progress) {
+          const progress = result.data.quiz_progress;
+          console.log('🔍 Progreso guardado encontrado en base de datos:', progress);
           
-          // Preguntar al usuario si quiere reanudar
+          // Preguntar al usuario si quiere reanudar usando el nuevo sistema de modales
           const categoryName = category?.name || 'esta categoría';
-          const shouldResume = window.confirm(
-            `Tienes un quiz pausado para "${categoryName}". ` +
-            `Progreso: ${progress.currentQuestionIndex + 1} de ${progress.questionsCount} preguntas. ` +
-            `¿Quieres continuar desde donde te quedaste?`
-          );
+          const currentQuestion = progress; // Ya viene como número de pregunta (1-based)
           
-          if (shouldResume) {
-            setStudentAnswers(progress.studentAnswers || {});
-            setCurrentQuestionIndex(progress.currentQuestionIndex || 0);
-            setQuizStartTime(new Date(progress.startTime));
-            setQuizStarted(true);
-            loadQuestions();
-          } else {
-            // Limpiar progreso guardado si no quiere continuar
-            localStorage.removeItem(`quiz_progress_${user.id}_${category.id}`);
-          }
-        } catch (error) {
-          console.error('❌ Error cargando progreso guardado:', error);
-          localStorage.removeItem(`quiz_progress_${user.id}_${category.id}`);
+          showConfirm(
+            '📚 Quiz Pausado',
+            `Tienes un quiz pausado para "${categoryName}".\n\nProgreso: ${currentQuestion} de ${questions?.length || 0} preguntas.\n\n¿Quieres continuar desde donde te quedaste?`,
+            () => {
+              // Usuario quiere continuar
+              console.log('✅ Reanudando quiz desde pregunta:', currentQuestion);
+              setCurrentQuestionIndex(currentQuestion - 1); // Convertir a 0-based
+              setQuizStarted(true);
+              loadQuestions();
+            },
+            async () => {
+              // Usuario no quiere continuar - limpiar progreso
+              console.log('🗑️ Limpiando progreso guardado');
+              await QuizProgressService.clearQuizProgress(user.id, category.id);
+            },
+            'Continuar Quiz',
+            'Empezar Nuevo'
+          );
         }
+      } catch (error) {
+        console.error('❌ Error cargando progreso guardado:', error);
       }
     };
     
@@ -441,6 +535,19 @@ const CategoryQuestionsPage = ({ category, user, onBack, onStartQuiz }) => {
     }
   };
 
+  // Efecto para regresar al dashboard cuando el quiz se completa en modo quiz
+  useEffect(() => {
+    if (quizCompleted && quizMode && !showResults) {
+      console.log('🎯 Quiz completado en modo quiz, regresando al dashboard...');
+      // Esperar un momento para mostrar el mensaje de completado
+      const timer = setTimeout(() => {
+        onBack();
+      }, 2000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [quizCompleted, quizMode, showResults, onBack]);
+
   const getQuestionTypeText = (type) => {
     switch (type) {
       case 'multiple_choice': return 'Opción Múltiple';
@@ -468,6 +575,18 @@ const CategoryQuestionsPage = ({ category, user, onBack, onStartQuiz }) => {
           <p>Cargando preguntas...</p>
         </div>
       </div>
+    );
+  }
+
+  // Si estamos mostrando las explicaciones, renderizar el componente de explicaciones
+  if (showExplanations && quizCompleted && explanationsEnabled) {
+    return (
+      <QuizExplanationsView
+        category={category}
+        user={user}
+        studentAnswers={studentAnswers}
+        onBack={() => setShowExplanations(false)}
+      />
     );
   }
 
@@ -574,123 +693,9 @@ const CategoryQuestionsPage = ({ category, user, onBack, onStartQuiz }) => {
             </div>
           </div>
 
-          {/* Stats Grid */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-            gap: '16px'
-          }}>
-            <div style={{
-              background: safeColor('success') + '20',
-              borderRadius: '12px',
-              padding: '16px',
-              textAlign: 'center',
-              border: `1px solid ${safeColor('success')}33`
-            }}>
-              <div style={{
-                fontSize: '1.5rem',
-                marginBottom: '8px'
-              }}>✅</div>
-              <div style={{
-                fontSize: '1.2rem',
-                fontWeight: '600',
-                color: safeColor('success'),
-                marginBottom: '4px'
-              }}>
-                {stats.correctAnswers}
-              </div>
-              <div style={{
-                fontSize: '0.8rem',
-                color: safeColor('textMuted')
-              }}>
-                Correctas
-              </div>
-            </div>
-
-            <div style={{
-              background: safeColor('error') + '20',
-              borderRadius: '12px',
-              padding: '16px',
-              textAlign: 'center',
-              border: `1px solid ${safeColor('error')}33`
-            }}>
-              <div style={{
-                fontSize: '1.5rem',
-                marginBottom: '8px'
-              }}>❌</div>
-              <div style={{
-                fontSize: '1.2rem',
-                fontWeight: '600',
-                color: safeColor('error'),
-                marginBottom: '4px'
-              }}>
-                {stats.incorrectAnswers}
-              </div>
-              <div style={{
-                fontSize: '0.8rem',
-                color: safeColor('textMuted')
-              }}>
-                Incorrectas
-              </div>
-            </div>
-
-            <div style={{
-              background: safeColor('warning') + '20',
-              borderRadius: '12px',
-              padding: '16px',
-              textAlign: 'center',
-              border: `1px solid ${safeColor('warning')}33`
-            }}>
-              <div style={{
-                fontSize: '1.5rem',
-                marginBottom: '8px'
-              }}>📊</div>
-              <div style={{
-                fontSize: '1.2rem',
-                fontWeight: '600',
-                color: safeColor('warning'),
-                marginBottom: '4px'
-              }}>
-                {stats.accuracy}%
-              </div>
-              <div style={{
-                fontSize: '0.8rem',
-                color: safeColor('textMuted')
-              }}>
-                Precisión
-              </div>
-            </div>
-
-            <div style={{
-              background: safeColor('primary') + '20',
-              borderRadius: '12px',
-              padding: '16px',
-              textAlign: 'center',
-              border: `1px solid ${safeColor('primary')}33`
-            }}>
-              <div style={{
-                fontSize: '1.5rem',
-                marginBottom: '8px'
-              }}>❓</div>
-              <div style={{
-                fontSize: '1.2rem',
-                fontWeight: '600',
-                color: safeColor('primary'),
-                marginBottom: '4px'
-              }}>
-                {questions.length}
-              </div>
-              <div style={{
-                fontSize: '0.8rem',
-                color: safeColor('textMuted')
-              }}>
-                Preguntas
-              </div>
-            </div>
-          </div>
 
           {/* Start Quiz Button */}
-          {questions.length > 0 && (
+          {questions.length > 0 && !quizCompleted && (
             <div style={{ marginTop: '20px', textAlign: 'center' }}>
               <CustomButton
                 onClick={() => onStartQuiz(category.id)}
@@ -717,7 +722,7 @@ const CategoryQuestionsPage = ({ category, user, onBack, onStartQuiz }) => {
           padding: '24px',
           border: `1px solid ${safeColor('border')}`
         }}>
-          {!quizStarted ? (
+          {!quizStarted && !quizCompleted ? (
             // Pantalla de inicio del quiz
             <div style={{
               textAlign: 'center',
@@ -743,61 +748,6 @@ const CategoryQuestionsPage = ({ category, user, onBack, onStartQuiz }) => {
                 {category?.description || 'Pon a prueba tus conocimientos en esta categoría.'}
               </p>
               
-              {/* Estadísticas previas */}
-              {stats.totalAnswers > 0 && (
-                <div style={{
-                  background: safeColor('cardBg'),
-                  borderRadius: '12px',
-                  padding: '20px',
-                  margin: '0 0 32px 0',
-                  border: `1px solid ${safeColor('border')}33`
-                }}>
-                  <h4 style={{
-                    fontSize: '1.1rem',
-                    fontWeight: '600',
-                    color: safeColor('textPrimary'),
-                    margin: '0 0 12px 0'
-                  }}>
-                    Tu Progreso Anterior
-                  </h4>
-                  <div style={{
-                    display: 'flex',
-                    justifyContent: 'space-around',
-                    gap: '20px'
-                  }}>
-                    <div style={{ textAlign: 'center' }}>
-                      <div style={{
-                        fontSize: '1.5rem',
-                        fontWeight: '600',
-                        color: safeColor('primary')
-                      }}>
-                        {stats.totalAnswers}
-                      </div>
-                      <div style={{
-                        fontSize: '0.9rem',
-                        color: safeColor('textMuted')
-                      }}>
-                        Respuestas
-                      </div>
-                    </div>
-                    <div style={{ textAlign: 'center' }}>
-                      <div style={{
-                        fontSize: '1.5rem',
-                        fontWeight: '600',
-                        color: safeColor('success')
-                      }}>
-                        {stats.accuracy}%
-                      </div>
-                      <div style={{
-                        fontSize: '0.9rem',
-                        color: safeColor('textMuted')
-                      }}>
-                        Precisión
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
 
               <CustomButton
                 text="🚀 Comenzar Quiz"
@@ -1027,22 +977,6 @@ const CategoryQuestionsPage = ({ category, user, onBack, onStartQuiz }) => {
                           {question.question}
                         </h4>
 
-                        {/* Debug info */}
-                        {process.env.NODE_ENV === 'development' && (
-                          <div style={{
-                            marginTop: '8px',
-                            padding: '8px',
-                            background: '#333',
-                            borderRadius: '4px',
-                            fontSize: '0.7rem',
-                            color: '#fff'
-                          }}>
-                            <strong>Debug:</strong> type={question.type || 'undefined'}, 
-                            hasOptions={!!question.options}, 
-                            optionsType={typeof question.options},
-                            optionsLength={Array.isArray(question.options) ? question.options.length : 'N/A'}
-                          </div>
-                        )}
 
                         {/* Opciones de respuesta */}
                         {question.options && Array.isArray(question.options) && question.options.length > 0 && (
@@ -1243,8 +1177,8 @@ const CategoryQuestionsPage = ({ category, user, onBack, onStartQuiz }) => {
             </div>
           )}
 
-          {/* Resultados del Quiz Completado */}
-          {quizCompleted && quizStats && (
+          {/* Mensaje de Quiz Completado - Solo en modo quiz */}
+          {quizCompleted && quizMode && (
             <div style={{
               background: safeColor('cardBg'),
               borderRadius: '16px',
@@ -1265,116 +1199,109 @@ const CategoryQuestionsPage = ({ category, user, onBack, onStartQuiz }) => {
               <p style={{
                 fontSize: '1.1rem',
                 color: safeColor('textMuted'),
+                margin: '0 0 24px 0'
+              }}>
+                Has terminado el quiz de {category?.name || 'esta categoría'}.<br/>
+                Regresando al dashboard...
+              </p>
+              <div style={{
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                gap: '8px',
+                color: safeColor('textMuted')
+              }}>
+                <div style={{
+                  width: '20px',
+                  height: '20px',
+                  border: `2px solid ${safeColor('primary')}`,
+                  borderTop: '2px solid transparent',
+                  borderRadius: '50%',
+                  animation: 'spin 1s linear infinite'
+                }} />
+                <span>Cargando...</span>
+              </div>
+            </div>
+          )}
+
+          {/* Resultados del Quiz Completado - Solo en modo estudio */}
+          {quizCompleted && quizStats && !quizMode && (
+            <div style={{
+              background: safeColor('cardBg'),
+              borderRadius: '16px',
+              padding: '32px',
+              marginTop: '24px',
+              border: `1px solid ${safeColor('border')}`,
+              textAlign: 'center'
+            }}>
+              <div style={{ fontSize: '64px', marginBottom: '24px' }}>
+                {explanationsEnabled ? '🎉' : '⏳'}
+              </div>
+              <h2 style={{
+                fontSize: '2rem',
+                fontWeight: '600',
+                color: safeColor('textPrimary'),
+                margin: '0 0 16px 0'
+              }}>
+                {explanationsEnabled ? '¡Quiz Completado!' : 'Quiz Completado'}
+              </h2>
+              {!explanationsEnabled && (
+                <div style={{
+                  background: safeColor('warning') + '20',
+                  border: `1px solid ${safeColor('warning')}40`,
+                  borderRadius: '12px',
+                  padding: '20px',
+                  marginBottom: '24px',
+                  color: safeColor('warning')
+                }}>
+                  <div style={{ fontSize: '48px', marginBottom: '12px' }}>🔒</div>
+                  <h3 style={{
+                    fontSize: '1.2rem',
+                    fontWeight: '600',
+                    margin: '0 0 8px 0',
+                    color: safeColor('warning')
+                  }}>
+                    Explicaciones Pendientes
+                  </h3>
+                  <p style={{
+                    fontSize: '1rem',
+                    margin: '0',
+                    color: safeColor('textMuted'),
+                    lineHeight: '1.5'
+                  }}>
+                    Tu quiz ha sido completado exitosamente. El administrador revisará tus respuestas 
+                    y habilitará las explicaciones cuando esté listo. Podrás ver tus resultados 
+                    y las explicaciones una vez que estén disponibles.
+                  </p>
+                </div>
+              )}
+              <p style={{
+                fontSize: '1.1rem',
+                color: safeColor('textMuted'),
                 margin: '0 0 32px 0'
               }}>
                 Has terminado el quiz de {category?.name || 'esta categoría'}
               </p>
 
-              {/* Estadísticas del Quiz */}
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-                gap: '20px',
-                marginBottom: '32px'
-              }}>
-                <div style={{
-                  background: safeColor('primary') + '20',
-                  borderRadius: '12px',
-                  padding: '20px',
-                  border: `1px solid ${safeColor('primary')}33`
-                }}>
-                  <div style={{ fontSize: '2rem', marginBottom: '8px' }}>❓</div>
-                  <div style={{
-                    fontSize: '1.5rem',
-                    fontWeight: '600',
-                    color: safeColor('primary'),
-                    marginBottom: '4px'
-                  }}>
-                    {quizStats.totalQuestions}
-                  </div>
-                  <div style={{
-                    fontSize: '0.9rem',
-                    color: safeColor('textMuted')
-                  }}>
-                    Preguntas
-                  </div>
-                </div>
 
-                <div style={{
-                  background: safeColor('success') + '20',
-                  borderRadius: '12px',
-                  padding: '20px',
-                  border: `1px solid ${safeColor('success')}33`
-                }}>
-                  <div style={{ fontSize: '2rem', marginBottom: '8px' }}>✅</div>
-                  <div style={{
-                    fontSize: '1.5rem',
-                    fontWeight: '600',
-                    color: safeColor('success'),
-                    marginBottom: '4px'
-                  }}>
-                    {quizStats.correctAnswers}
-                  </div>
-                  <div style={{
-                    fontSize: '0.9rem',
-                    color: safeColor('textMuted')
-                  }}>
-                    Correctas
-                  </div>
-                </div>
-
-                <div style={{
-                  background: safeColor('error') + '20',
-                  borderRadius: '12px',
-                  padding: '20px',
-                  border: `1px solid ${safeColor('error')}33`
-                }}>
-                  <div style={{ fontSize: '2rem', marginBottom: '8px' }}>❌</div>
-                  <div style={{
-                    fontSize: '1.5rem',
-                    fontWeight: '600',
-                    color: safeColor('error'),
-                    marginBottom: '4px'
-                  }}>
-                    {quizStats.incorrectAnswers}
-                  </div>
-                  <div style={{
-                    fontSize: '0.9rem',
-                    color: safeColor('textMuted')
-                  }}>
-                    Incorrectas
-                  </div>
-                </div>
-
-                <div style={{
-                  background: safeColor('warning') + '20',
-                  borderRadius: '12px',
-                  padding: '20px',
-                  border: `1px solid ${safeColor('warning')}33`
-                }}>
-                  <div style={{ fontSize: '2rem', marginBottom: '8px' }}>📊</div>
-                  <div style={{
-                    fontSize: '1.5rem',
-                    fontWeight: '600',
-                    color: safeColor('warning'),
-                    marginBottom: '4px'
-                  }}>
-                    {quizStats.accuracy}%
-                  </div>
-                  <div style={{
-                    fontSize: '0.9rem',
-                    color: safeColor('textMuted')
-                  }}>
-                    Precisión
-                  </div>
-                </div>
-              </div>
-
-              {/* Botón de acción */}
+              {/* Botones de acción */}
               <div style={{
                 display: 'flex',
-                justifyContent: 'center'
+                justifyContent: 'center',
+                gap: '16px',
+                flexWrap: 'wrap'
               }}>
+                {explanationsEnabled && (
+                  <CustomButton
+                    text="Ver Explicaciones"
+                    onClick={() => setShowExplanations(true)}
+                    variant="success"
+                    style={{
+                      fontSize: '1rem',
+                      padding: '12px 24px'
+                    }}
+                  />
+                )}
                 <CustomButton
                   text="Volver al Dashboard"
                   onClick={onBack}
@@ -1389,8 +1316,20 @@ const CategoryQuestionsPage = ({ category, user, onBack, onStartQuiz }) => {
           )}
         </div>
       </div>
+      
+      {/* Modal personalizado */}
+      <CustomModal
+        isOpen={modalState.isOpen}
+        onClose={hideModal}
+        title={modalState.title}
+        message={modalState.message}
+        type={modalState.type}
+        buttons={modalState.buttons}
+        showCloseButton={modalState.showCloseButton}
+      />
     </div>
   );
 };
 
 export default CategoryQuestionsPage;
+

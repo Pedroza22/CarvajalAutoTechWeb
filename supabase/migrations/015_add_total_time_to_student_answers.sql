@@ -1,0 +1,2 @@
+-- La columna time_spent ya existe en student_answers
+-- No se requiere migración, solo usar el nombre correcto en el código
