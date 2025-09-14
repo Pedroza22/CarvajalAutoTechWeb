@@ -245,23 +245,55 @@ const DashboardHome = ({ onNavigate }) => {
     }}>
       {/* Header */}
       <div style={{
-        marginBottom: '32px'
+        marginBottom: '32px',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start'
       }}>
-        <h1 style={{
-          fontSize: '2.5rem',
-          fontWeight: '700',
-          color: safeColor('textPrimary'),
-          margin: '0 0 8px 0'
-        }}>
-          Panel de Administración
-        </h1>
-        <p style={{
-          fontSize: '1.2rem',
-          color: safeColor('textMuted'),
-          margin: 0
-        }}>
-          Bienvenido al sistema de gestión educativa
-        </p>
+        <div>
+          <h1 style={{
+            fontSize: '2.5rem',
+            fontWeight: '700',
+            color: safeColor('textPrimary'),
+            margin: '0 0 12px 0'
+          }}>
+            Panel de Administración
+          </h1>
+          <p style={{
+            fontSize: '1.2rem',
+            color: safeColor('textMuted'),
+            margin: 0
+          }}>
+            Bienvenido al sistema de gestión educativa
+          </p>
+        </div>
+        <button
+          onClick={() => window.history.back()}
+          style={{
+            background: 'transparent',
+            border: `2px solid ${safeColor('primary')}`,
+            color: safeColor('primary'),
+            padding: '12px 24px',
+            borderRadius: '12px',
+            cursor: 'pointer',
+            fontSize: '1rem',
+            fontWeight: '600',
+            transition: 'all 0.2s ease',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}
+          onMouseOver={(e) => {
+            e.target.style.background = safeColor('primary');
+            e.target.style.color = safeColor('background');
+          }}
+          onMouseOut={(e) => {
+            e.target.style.background = 'transparent';
+            e.target.style.color = safeColor('primary');
+          }}
+        >
+          ← Devolver
+        </button>
       </div>
 
       {/* Quick Stats */}
@@ -289,7 +321,7 @@ const DashboardHome = ({ onNavigate }) => {
               fontSize: '2rem',
               fontWeight: '700',
               color: stat.color,
-              margin: '0 0 8px 0'
+              margin: '0 0 12px 0'
             }}>
               {stat.value}
             </h3>

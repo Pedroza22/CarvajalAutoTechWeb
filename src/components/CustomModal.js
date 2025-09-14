@@ -74,14 +74,13 @@ const CustomModal = ({
     }}>
       <div style={{
         background: safeColor('cardBg'),
-        border: `1px solid ${config.borderColor}`,
-        borderRadius: '20px',
-        padding: '32px',
-        maxWidth: '450px',
+        border: `1px solid ${safeColor('border')}`,
+        borderRadius: '12px',
+        padding: '24px',
+        maxWidth: '400px',
         width: '90%',
-        textAlign: 'center',
-        boxShadow: '0 20px 40px rgba(0, 0, 0, 0.3)',
-        animation: 'modalSlideIn 0.3s ease',
+        textAlign: 'left',
+        boxShadow: '0 10px 30px rgba(0, 0, 0, 0.3)',
         position: 'relative'
       }}>
         {/* Botón de cerrar */}
@@ -118,28 +117,12 @@ const CustomModal = ({
           </button>
         )}
 
-        {/* Icono */}
-        <div style={{
-          width: '80px',
-          height: '80px',
-          background: config.iconBg,
-          borderRadius: '50%',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          margin: '0 auto 24px auto',
-          fontSize: '40px',
-          boxShadow: `0 8px 16px ${config.iconBg}40`,
-          animation: 'iconBounce 0.6s ease'
-        }}>
-          {config.icon}
-        </div>
 
         {/* Título */}
         <h2 style={{
-          fontSize: '1.5rem',
-          fontWeight: '700',
-          color: config.titleColor,
+          fontSize: '1.2rem',
+          fontWeight: '600',
+          color: safeColor('textPrimary'),
           margin: '0 0 16px 0',
           lineHeight: '1.3'
         }}>
@@ -148,10 +131,11 @@ const CustomModal = ({
 
         {/* Mensaje */}
         <p style={{
-          fontSize: '1rem',
+          fontSize: '0.95rem',
           color: safeColor('textMuted'),
-          margin: '0 0 32px 0',
-          lineHeight: '1.5'
+          margin: '0 0 24px 0',
+          lineHeight: '1.5',
+          whiteSpace: 'pre-line'
         }}>
           {message}
         </p>
@@ -160,7 +144,7 @@ const CustomModal = ({
         <div style={{
           display: 'flex',
           gap: '12px',
-          justifyContent: 'center',
+          justifyContent: 'flex-end',
           flexWrap: 'wrap'
         }}>
           {defaultButtons.map((button, index) => (
@@ -168,14 +152,14 @@ const CustomModal = ({
               key={index}
               onClick={button.onClick}
               style={{
-                padding: '12px 24px',
-                fontSize: '1rem',
-                fontWeight: '600',
-                borderRadius: '12px',
+                padding: '10px 20px',
+                fontSize: '0.9rem',
+                fontWeight: '500',
+                borderRadius: '6px',
                 border: 'none',
                 cursor: 'pointer',
                 transition: 'all 0.2s ease',
-                minWidth: '120px',
+                minWidth: '80px',
                 background: button.variant === 'primary' 
                   ? safeColor('primary') 
                   : button.variant === 'success'

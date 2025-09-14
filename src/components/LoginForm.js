@@ -2,12 +2,15 @@ import React, { useRef, useState } from 'react';
 import { AppConstants } from '../utils/constants';
 import { ValidationUtils } from '../utils/validation';
 import CustomButton from './CustomButton';
+import useModal from '../hooks/useModal';
+import CustomModal from './CustomModal';
 
 const LoginForm = ({ onSuccess, onError, isAdmin = false }) => {
   const emailRef = useRef(null);
   const passwordRef = useRef(null);
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { modalState, showModal, hideModal, showInfo } = useModal();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -117,7 +120,7 @@ const LoginForm = ({ onSuccess, onError, isAdmin = false }) => {
         <div style={{ textAlign: 'right' }}>
           <button
             type="button"
-            onClick={() => alert('Funcionalidad próximamente')}
+            onClick={() => showInfo('Próximamente', 'Funcionalidad próximamente')}
             style={{
               background: 'none',
               border: 'none',
@@ -138,6 +141,17 @@ const LoginForm = ({ onSuccess, onError, isAdmin = false }) => {
         variant="primary"
         disabled={isSubmitting}
         style={{ marginTop: '16px' }}
+      />
+      
+      {/* Modal personalizado */}
+      <CustomModal
+        isOpen={modalState.isOpen}
+        onClose={hideModal}
+        title={modalState.title}
+        message={modalState.message}
+        type={modalState.type}
+        buttons={modalState.buttons}
+        showCloseButton={modalState.showCloseButton}
       />
     </form>
   );

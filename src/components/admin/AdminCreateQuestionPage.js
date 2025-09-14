@@ -3,6 +3,8 @@ import { getColor } from '../../utils/constants';
 import QuestionsService from '../../services/QuestionsService';
 import CategoriesService from '../../services/CategoriesService';
 import { supabase } from '../../services/supabase';
+import useModal from '../../hooks/useModal';
+import CustomModal from '../CustomModal';
 
 const AdminCreateQuestionPage = ({ onNavigate, questionData = null }) => {
   console.log('🔍 AdminCreateQuestionPage - supabase disponible:', !!supabase);
@@ -20,6 +22,7 @@ const AdminCreateQuestionPage = ({ onNavigate, questionData = null }) => {
   });
   const [selectedFile, setSelectedFile] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const { modalState, showModal, hideModal, showSuccess, showError } = useModal();
 
   const isEditing = !!questionData;
 
@@ -77,13 +80,13 @@ const AdminCreateQuestionPage = ({ onNavigate, questionData = null }) => {
     if (file) {
       // Validar tipo de archivo
       if (!file.type.startsWith('image/')) {
-        window.alert('Por favor selecciona un archivo de imagen válido (JPG, PNG, GIF, WebP)');
+        showError('Archivo Inválido', 'Por favor selecciona un archivo de imagen válido (JPG, PNG, GIF, WebP)');
         return;
       }
       
       // Validar tamaño (máximo 5MB)
       if (file.size > 5 * 1024 * 1024) {
-        window.alert('El archivo es demasiado grande. Máximo 5MB permitido');
+        showError('Archivo Muy Grande', 'El archivo es demasiado grande. Máximo 5MB permitido');
         return;
       }
       
@@ -187,17 +190,17 @@ const AdminCreateQuestionPage = ({ onNavigate, questionData = null }) => {
     e.preventDefault();
     
     if (!formData.question.trim()) {
-      window.alert('La pregunta es obligatoria');
+      showError('Campo Requerido', 'La pregunta es obligatoria');
       return;
     }
     
     if (!formData.categoryId) {
-      window.alert('Selecciona una categoría');
+      showError('Campo Requerido', 'Selecciona una categoría');
       return;
     }
     
     if (formData.type !== 'free_text' && !formData.correctAnswer) {
-      window.alert('Selecciona la respuesta correcta');
+      showError('Campo Requerido', 'Selecciona la respuesta correcta');
       return;
     }
 
@@ -214,7 +217,7 @@ const AdminCreateQuestionPage = ({ onNavigate, questionData = null }) => {
           console.log('✅ Imagen subida exitosamente:', imageUrl);
         } catch (uploadError) {
           console.error('❌ Error subiendo imagen:', uploadError);
-          window.alert(`Error subiendo imagen: ${uploadError.message}`);
+          showError('Error de Subida', `Error subiendo imagen: ${uploadError.message}`);
           setLoading(false);
           return;
         }
@@ -235,10 +238,10 @@ const AdminCreateQuestionPage = ({ onNavigate, questionData = null }) => {
 
       if (isEditing) {
         await QuestionsService.updateQuestion(questionData.id, questionPayload);
-        window.alert('Pregunta actualizada exitosamente');
+        showSuccess('Pregunta Actualizada', 'Pregunta actualizada exitosamente');
       } else {
         await QuestionsService.createQuestion(questionPayload);
-        window.alert('Pregunta creada exitosamente');
+        showSuccess('Pregunta Creada', 'Pregunta creada exitosamente');
       }
       
       // Navegar después de mostrar el mensaje
@@ -248,7 +251,7 @@ const AdminCreateQuestionPage = ({ onNavigate, questionData = null }) => {
       
     } catch (error) {
       console.error('❌ Error guardando pregunta:', error);
-      window.alert('Error al guardar la pregunta: ' + (error.message || 'Error desconocido'));
+      showError('Error al Guardar', 'Error al guardar la pregunta: ' + (error.message || 'Error desconocido'));
     } finally {
       setLoading(false);
     }
@@ -854,6 +857,17 @@ const AdminCreateQuestionPage = ({ onNavigate, questionData = null }) => {
           </div>
         </div>
       </form>
+      
+      {/* Modal personalizado */}
+      <CustomModal
+        isOpen={modalState.isOpen}
+        onClose={hideModal}
+        title={modalState.title}
+        message={modalState.message}
+        type={modalState.type}
+        buttons={modalState.buttons}
+        showCloseButton={modalState.showCloseButton}
+      />
     </div>
   );
 };

@@ -3,6 +3,8 @@ import { AppTheme } from '../../utils/appTheme';
 import CustomButton from '../CustomButton';
 import QuestionsService from '../../services/QuestionsService';
 import CategoriesService from '../../services/CategoriesService';
+import useModal from '../../hooks/useModal';
+import CustomModal from '../CustomModal';
 
 const AdminQuestionsListPage = ({ onNavigate }) => {
   const [questions, setQuestions] = useState([]);
@@ -10,6 +12,7 @@ const AdminQuestionsListPage = ({ onNavigate }) => {
   const [loading, setLoading] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('');
   const [searchText, setSearchText] = useState('');
+  const { modalState, showModal, hideModal, showSuccess, showError, showConfirm } = useModal();
 
   useEffect(() => {
     loadData();
@@ -61,19 +64,29 @@ const AdminQuestionsListPage = ({ onNavigate }) => {
   };
 
   const handleDeleteQuestion = async (questionId) => {
-    if (!window.confirm('¿Estás seguro de que quieres eliminar esta pregunta?')) {
-      return;
-    }
+    showConfirm(
+      'Eliminar Pregunta',
+      '¿Estás seguro de que quieres eliminar esta pregunta?',
+      async () => {
+        await deleteQuestion(questionId);
+      },
+      () => {
+        console.log('❌ Usuario canceló la eliminación');
+      }
+    );
+  };
+
+  const deleteQuestion = async (questionId) => {
 
     try {
       setLoading(true);
       await QuestionsService.deleteQuestion(questionId);
       console.log('✅ Pregunta eliminada exitosamente');
-      window.alert('Pregunta eliminada exitosamente');
+      showSuccess('Pregunta Eliminada', 'Pregunta eliminada exitosamente');
       await loadQuestions(); // Recargar la lista
     } catch (error) {
       console.error('❌ Error eliminando pregunta:', error);
-      window.alert('Error al eliminar la pregunta: ' + (error.message || 'Error desconocido'));
+      showError('Error', 'Error al eliminar la pregunta: ' + (error.message || 'Error desconocido'));
     } finally {
       setLoading(false);
     }
@@ -485,6 +498,17 @@ const AdminQuestionsListPage = ({ onNavigate }) => {
           ))}
         </div>
       )}
+      
+      {/* Modal personalizado */}
+      <CustomModal
+        isOpen={modalState.isOpen}
+        onClose={hideModal}
+        title={modalState.title}
+        message={modalState.message}
+        type={modalState.type}
+        buttons={modalState.buttons}
+        showCloseButton={modalState.showCloseButton}
+      />
     </div>
   );
 };

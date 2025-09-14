@@ -4,6 +4,8 @@ import CustomButton from './CustomButton';
 import CustomTextField from './CustomTextField';
 import CategoryCard from './admin/CategoryCard';
 import { AppTheme } from '../utils/appTheme';
+import useModal from '../hooks/useModal';
+import CustomModal from './CustomModal';
 
 const AdminCategoriesPage = ({ onNavigate }) => {
   const [categories, setCategories] = useState([]);
@@ -20,6 +22,7 @@ const AdminCategoriesPage = ({ onNavigate }) => {
   const [selectedStudents, setSelectedStudents] = useState([]);
   const [studentSearchTerm, setStudentSearchTerm] = useState('');
   const [studentPublicationStatus, setStudentPublicationStatus] = useState({});
+  const { modalState, showModal, hideModal, showSuccess, showError, showConfirm } = useModal();
 
   useEffect(() => {
     loadCategories();
@@ -159,7 +162,19 @@ const AdminCategoriesPage = ({ onNavigate }) => {
   };
 
   const handleDelete = async (category) => {
-    if (!window.confirm(`¿Eliminar la categoría "${category.name}"?`)) return;
+    showConfirm(
+      'Eliminar Categoría',
+      `¿Eliminar la categoría "${category.name}"?`,
+      async () => {
+        await deleteCategory(category);
+      },
+      () => {
+        console.log('❌ Usuario canceló la eliminación');
+      }
+    );
+  };
+
+  const deleteCategory = async (category) => {
     
     try {
       const res = await CategoriesService.deleteCategory(category.id);
@@ -254,7 +269,7 @@ const AdminCategoriesPage = ({ onNavigate }) => {
       console.log(`✅ Categoría ${published ? 'publicada' : 'despublicada'} para estudiante ${studentId}`);
     } catch (error) {
       console.error('Error cambiando publicación:', error);
-      alert('Error cambiando publicación: ' + error.message);
+      showError('Error', 'Error cambiando publicación: ' + error.message);
     }
   };
 
@@ -311,7 +326,7 @@ const AdminCategoriesPage = ({ onNavigate }) => {
         message = `${removedCount} estudiantes removidos`;
       }
       
-      alert(message);
+      showSuccess('Estudiantes Asignados', message);
       setShowAssignModal(false);
       setAssigningCategory(null);
       setSelectedStudents([]);
@@ -319,7 +334,7 @@ const AdminCategoriesPage = ({ onNavigate }) => {
       setStudentPublicationStatus({});
     } catch (error) {
       console.error('Error asignando estudiantes:', error);
-      alert('Error asignando estudiantes: ' + error.message);
+      showError('Error', 'Error asignando estudiantes: ' + error.message);
     }
   };
 
@@ -841,6 +856,17 @@ const AdminCategoriesPage = ({ onNavigate }) => {
           </div>
         </div>
       )}
+      
+      {/* Modal personalizado */}
+      <CustomModal
+        isOpen={modalState.isOpen}
+        onClose={hideModal}
+        title={modalState.title}
+        message={modalState.message}
+        type={modalState.type}
+        buttons={modalState.buttons}
+        showCloseButton={modalState.showCloseButton}
+      />
     </div>
   );
 };

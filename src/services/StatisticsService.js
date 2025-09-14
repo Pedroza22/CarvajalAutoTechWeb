@@ -153,22 +153,31 @@ class StatisticsService {
    */
   async getTopStudentsFromView() {
     try {
+      console.log('🔍 Obteniendo top estudiantes desde stats_top_students...');
       const { data, error } = await supabase
         .from('stats_top_students')
         .select('*')
         .limit(5);
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Error en consulta stats_top_students:', error);
+        throw error;
+      }
       
-      return data ? data.map(student => ({
+      console.log('📊 Datos raw de top estudiantes:', data);
+      
+      const formattedData = data ? data.map(student => ({
         name: student.name || 'Sin nombre',
         email: student.email,
         accuracy: student.accuracy,
         questionsAnswered: student.questions_answered,
         rank: student.rank
       })) : [];
+      
+      console.log('✅ Top estudiantes formateados:', formattedData);
+      return formattedData;
     } catch (error) {
-      console.error('Error obteniendo top estudiantes:', error);
+      console.error('❌ Error obteniendo top estudiantes:', error);
       return [];
     }
   }
@@ -802,6 +811,7 @@ class StatisticsService {
    */
   async getWeeklyActivity() {
     try {
+      console.log('📊 Obteniendo actividad semanal...');
       const { data, error } = await supabase
         .from('stats_trends')
         .select('day, answers')
@@ -810,7 +820,7 @@ class StatisticsService {
       // Si la vista no existe, retornar datos de ejemplo
       if (error && error.code === '42P01') {
         console.warn('⚠️ Vista stats_trends no existe, usando datos de ejemplo');
-        return [
+        const exampleData = [
           { day: 'L', count: 12 },
           { day: 'M', count: 18 },
           { day: 'X', count: 15 },
@@ -819,13 +829,16 @@ class StatisticsService {
           { day: 'S', count: 8 },
           { day: 'D', count: 5 }
         ];
+        console.log('✅ Datos de ejemplo para actividad semanal:', exampleData);
+        return exampleData;
       }
 
       if (error) throw error;
 
       // Si no hay datos, retornar datos de ejemplo
       if (!data || data.length === 0) {
-        return [
+        console.warn('⚠️ No hay datos en stats_trends, usando datos de ejemplo');
+        const exampleData = [
           { day: 'L', count: 12 },
           { day: 'M', count: 18 },
           { day: 'X', count: 15 },
@@ -834,16 +847,21 @@ class StatisticsService {
           { day: 'S', count: 8 },
           { day: 'D', count: 5 }
         ];
+        console.log('✅ Datos de ejemplo para actividad semanal:', exampleData);
+        return exampleData;
       }
 
-      return data.map(item => ({
+      const formattedData = data.map(item => ({
         day: item.day,
         count: item.answers || 0
       }));
+      
+      console.log('✅ Actividad semanal obtenida:', formattedData);
+      return formattedData;
     } catch (error) {
-      console.error('Error obteniendo actividad semanal:', error);
+      console.error('❌ Error obteniendo actividad semanal:', error);
       // Retornar datos de ejemplo si hay error
-      return [
+      const exampleData = [
         { day: 'L', count: 12 },
         { day: 'M', count: 18 },
         { day: 'X', count: 15 },
@@ -852,6 +870,8 @@ class StatisticsService {
         { day: 'S', count: 8 },
         { day: 'D', count: 5 }
       ];
+      console.log('✅ Datos de ejemplo para actividad semanal (error):', exampleData);
+      return exampleData;
     }
   }
 

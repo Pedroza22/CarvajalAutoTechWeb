@@ -106,7 +106,7 @@ const AdminHomePage = ({ onNavigate }) => {
 
   const quickActionsGridStyle = {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+    gridTemplateColumns: 'repeat(2, 1fr)',
     gap: '16px',
     marginBottom: '32px',
   };
@@ -131,9 +131,7 @@ const AdminHomePage = ({ onNavigate }) => {
       marginBottom: window.innerWidth <= 480 ? '12px' : '0',
     },
     quickActionsGrid: {
-      gridTemplateColumns: window.innerWidth <= 480 ? '1fr' : 
-                          window.innerWidth <= 768 ? 'repeat(auto-fit, minmax(250px, 1fr))' :
-                          'repeat(auto-fit, minmax(280px, 1fr))',
+      gridTemplateColumns: window.innerWidth <= 480 ? '1fr' : 'repeat(2, 1fr)',
       gap: window.innerWidth <= 480 ? '12px' : '16px',
     },
     statsGrid: {

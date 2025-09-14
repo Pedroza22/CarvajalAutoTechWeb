@@ -4,6 +4,8 @@ import StudentsService from '../../services/StudentsService';
 import StudentCategoriesService from '../../services/StudentCategoriesService';
 import ExplanationsService from '../../services/ExplanationsService';
 import { supabase } from '../../services/supabase';
+import useModal from '../../hooks/useModal';
+import CustomModal from '../CustomModal';
 
 const AdminStudentDetailPage = ({ onNavigate, student }) => {
   console.log('🔍 AdminStudentDetailPage recibió student:', student);
@@ -14,6 +16,7 @@ const AdminStudentDetailPage = ({ onNavigate, student }) => {
   const [activeTab, setActiveTab] = useState('quizzes');
   const [categoryExplanations, setCategoryExplanations] = useState({});
   const [connectionError, setConnectionError] = useState(false);
+  const { modalState, showModal, hideModal, showSuccess, showError, showConfirm } = useModal();
 
   const loadStudentDetail = useCallback(async () => {
     try {
@@ -139,32 +142,37 @@ const AdminStudentDetailPage = ({ onNavigate, student }) => {
     console.log('🔍 categoryExplanations:', categoryExplanations);
     console.log('🔍 category.categoryId:', category.categoryId);
     
-    try {
-      console.log('📤 Enviando explicaciones para categoría:', category.categoryName);
-      
-      // Verificar que hay explicaciones para enviar
-      const explanations = categoryExplanations[category.categoryId];
-      console.log('🔍 Explicaciones encontradas:', explanations);
-      
-      if (!explanations || explanations.trim() === '') {
-        console.log('⚠️ No hay explicaciones disponibles');
-        alert('No hay explicaciones disponibles para enviar');
-        return;
-      }
-      
-      // Mostrar confirmación
-      const confirmed = window.confirm(
-        `¿Estás seguro de que quieres enviar las explicaciones de "${category.categoryName}" al estudiante ${studentData.name}?`
-      );
-      
-      if (!confirmed) {
+    console.log('📤 Enviando explicaciones para categoría:', category.categoryName);
+    
+    // Verificar que hay explicaciones para enviar
+    const explanations = categoryExplanations[category.categoryId];
+    console.log('🔍 Explicaciones encontradas:', explanations);
+    
+    if (!explanations || explanations.trim() === '') {
+      console.log('⚠️ No hay explicaciones disponibles');
+      showError('Sin explicaciones', 'No hay explicaciones disponibles para enviar');
+      return;
+    }
+    
+    // Mostrar confirmación
+    showConfirm(
+      'Enviar Explicaciones',
+      `¿Estás seguro de que quieres enviar las explicaciones de "${category.categoryName}" al estudiante ${studentData.name}?`,
+      async () => {
+        // Usuario confirmó - proceder con el envío
+        await sendExplanationsToDatabase(category, explanations);
+      },
+      () => {
         console.log('❌ Usuario canceló el envío');
-        return;
       }
-      
-      console.log('✅ Usuario confirmó el envío');
-      
-      // Formatear explicaciones como array de objetos
+    );
+  };
+
+    const sendExplanationsToDatabase = async (category, explanations) => {
+      try {
+        console.log('✅ Usuario confirmó el envío');
+        
+        // Formatear explicaciones como array de objetos
       const formattedExplanations = explanations.split('\n').map((line, index) => {
         // Buscar patrones como "1. Pregunta: ..." o "Explicación: ..."
         if (line.includes('Pregunta:') || line.includes('Explicación:')) {
@@ -217,17 +225,20 @@ const AdminStudentDetailPage = ({ onNavigate, student }) => {
       
       console.log('✅ Estado actualizado');
       
-      // Mostrar mensaje de éxito
-      alert(`✅ Explicaciones enviadas exitosamente para ${category.categoryName}\n\nLas explicaciones han sido guardadas en la base de datos y están disponibles para el estudiante.`);
-      
-      // Recargar datos para reflejar los cambios
-      await refreshStudentData();
-      
-    } catch (error) {
-      console.error('❌ Error enviando explicaciones:', error);
-      alert('❌ Error al enviar las explicaciones. Inténtalo de nuevo.');
-    }
-  };
+        // Mostrar mensaje de éxito
+        showSuccess(
+          'Explicaciones Enviadas',
+          `Explicaciones enviadas exitosamente para ${category.categoryName}\n\nLas explicaciones han sido guardadas en la base de datos y están disponibles para el estudiante.`
+        );
+        
+        // Recargar datos para reflejar los cambios
+        await refreshStudentData();
+        
+      } catch (error) {
+        console.error('❌ Error enviando explicaciones:', error);
+        showError('Error al Enviar', 'Error al enviar las explicaciones. Inténtalo de nuevo.');
+      }
+    };
 
   const handleToggleStudyMode = async (category) => {
     console.log('🔍 handleToggleStudyMode llamado con:', category);
@@ -250,7 +261,7 @@ const AdminStudentDetailPage = ({ onNavigate, student }) => {
 
       if (error) {
         console.error('❌ Error actualizando modo:', error);
-        alert(`Error actualizando modo: ${error.message}`);
+        showError('Error', `Error actualizando modo: ${error.message}`);
         return;
       }
 
@@ -271,14 +282,16 @@ const AdminStudentDetailPage = ({ onNavigate, student }) => {
         };
       });
       
-      alert(newModo 
-        ? `🎮 Modo Quiz habilitado para ${category.categoryName}. El estudiante puede hacer el quiz.`
-        : `📚 Modo Estudio habilitado para ${category.categoryName}. El estudiante verá las explicaciones en el quiz.`
+      showSuccess(
+        'Modo Actualizado',
+        newModo 
+          ? `🎮 Modo Quiz habilitado para ${category.categoryName}. El estudiante puede hacer el quiz.`
+          : `📚 Modo Estudio habilitado para ${category.categoryName}. El estudiante verá las explicaciones en el quiz.`
       );
       
     } catch (error) {
       console.error('❌ Error en handleToggleStudyMode:', error);
-      alert('❌ Error actualizando el modo. Inténtalo de nuevo.');
+      showError('Error', 'Error actualizando el modo. Inténtalo de nuevo.');
     }
   };
 
@@ -301,22 +314,24 @@ const AdminStudentDetailPage = ({ onNavigate, student }) => {
 
       if (!result.success) {
         console.error('❌ Error actualizando estado de explicaciones:', result.error);
-        alert(`Error actualizando estado de explicaciones: ${result.error}`);
+        showError('Error', `Error actualizando estado de explicaciones: ${result.error}`);
         return;
       }
 
       console.log('✅ Estado de explicaciones actualizado:', newStatus);
       console.log('✅ Resultado:', result);
-      alert(newStatus 
-        ? `Explicaciones habilitadas para ${category.categoryName}` 
-        : `Explicaciones deshabilitadas para ${category.categoryName}`
+      showSuccess(
+        'Estado Actualizado',
+        newStatus 
+          ? `Explicaciones habilitadas para ${category.categoryName}` 
+          : `Explicaciones deshabilitadas para ${category.categoryName}`
       );
       
       // Recargar datos del estudiante
       await refreshStudentData();
     } catch (error) {
       console.error('❌ Error en handleToggleExplanations:', error);
-      alert('Error actualizando estado de explicaciones');
+      showError('Error', 'Error actualizando estado de explicaciones');
     }
   };
 
@@ -347,17 +362,18 @@ const AdminStudentDetailPage = ({ onNavigate, student }) => {
       console.log('✅ Modo actualizado exitosamente:', newModo);
       
       // Mostrar mensaje de confirmación
-      if (newModo) {
-        alert(`🎮 Quiz habilitado para ${category.categoryName}. El estudiante puede hacer el quiz.`);
-      } else {
-        alert(`📚 Modo estudio activado para ${category.categoryName}. El estudiante solo puede ver explicaciones.`);
-      }
+      showSuccess(
+        'Modo Actualizado',
+        newModo 
+          ? `🎮 Quiz habilitado para ${category.categoryName}. El estudiante puede hacer el quiz.`
+          : `📚 Modo estudio activado para ${category.categoryName}. El estudiante solo puede ver explicaciones.`
+      );
       
       // Recargar datos del estudiante
       await refreshStudentData();
     } catch (error) {
       console.error('❌ Error en handleToggleQuizMode:', error);
-      alert('Error actualizando modo del quiz');
+      showError('Error', 'Error actualizando modo del quiz');
     }
   };
 
@@ -1085,6 +1101,17 @@ const AdminStudentDetailPage = ({ onNavigate, student }) => {
             </div>
         </div>
       )}
+      
+      {/* Modal personalizado */}
+      <CustomModal
+        isOpen={modalState.isOpen}
+        onClose={hideModal}
+        title={modalState.title}
+        message={modalState.message}
+        type={modalState.type}
+        buttons={modalState.buttons}
+        showCloseButton={modalState.showCloseButton}
+      />
     </div>
   );
 };

@@ -13,7 +13,8 @@ const AdminStatisticsPage = ({ onNavigate }) => {
     recentActivity: [],
     categoryStats: [],
     difficultyStats: [],
-    monthlyStats: []
+    monthlyStats: [],
+    topStudents: []
   });
   const [loading, setLoading] = useState(true);
   const [selectedPeriod, setSelectedPeriod] = useState('30d');
@@ -28,6 +29,7 @@ const AdminStatisticsPage = ({ onNavigate }) => {
       const stats = await StatisticsService.getAdminStatistics(selectedPeriod);
       setStatistics(stats);
       console.log('✅ Estadísticas cargadas:', stats);
+      console.log('📊 Top estudiantes recibidos:', stats.topStudents);
     } catch (error) {
       console.error('❌ Error cargando estadísticas:', error);
       // Datos de ejemplo en caso de error
@@ -226,6 +228,7 @@ const AdminStatisticsPage = ({ onNavigate }) => {
         </div>
       </div>
 
+
       {/* Top 5 Estudiantes */}
       <div style={{
         background: safeColor('cardBg'),
@@ -340,279 +343,6 @@ const AdminStatisticsPage = ({ onNavigate }) => {
             <p>No hay datos de estudiantes disponibles</p>
           </div>
         )}
-      </div>
-
-      {/* Tendencias de Actividad */}
-      <div style={{
-        background: safeColor('cardBg'),
-        borderRadius: '16px',
-        padding: '24px',
-        border: `1px solid ${safeColor('border')}`,
-        marginBottom: '32px',
-        overflow: 'hidden'
-      }}>
-        <h3 style={{
-          fontSize: '1.3rem',
-          fontWeight: '600',
-          color: safeColor('textPrimary'),
-          margin: '0 0 20px 0'
-        }}>
-          Tendencias de Actividad
-        </h3>
-        
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '20px'
-        }}>
-          <h4 style={{
-            fontSize: '1.1rem',
-            fontWeight: '600',
-            color: safeColor('textPrimary'),
-            margin: 0
-          }}>
-            Respuestas por Día
-          </h4>
-          <div style={{
-            background: safeColor('primary'),
-            color: 'white',
-            padding: '6px 12px',
-            borderRadius: '20px',
-            fontSize: '0.9rem',
-            fontWeight: '600'
-          }}>
-            Última semana
-          </div>
-        </div>
-
-        {/* Gráfico de puntos */}
-        <div style={{
-          background: safeColor('dark'),
-          borderRadius: '12px',
-          padding: '20px',
-          marginBottom: '20px',
-          height: '140px',
-          display: 'flex',
-          alignItems: 'end',
-          justifyContent: 'space-around',
-          border: `1px solid ${safeColor('border')}33`,
-          overflow: 'hidden',
-          position: 'relative'
-        }}>
-          {/* Línea de base */}
-          <div style={{
-            position: 'absolute',
-            bottom: '40px',
-            left: '20px',
-            right: '20px',
-            height: '1px',
-            background: safeColor('border'),
-            opacity: 0.3
-          }} />
-          {statistics.weeklyActivity && statistics.weeklyActivity.length > 0 ? (
-            statistics.weeklyActivity.map((dayData, index) => {
-              const maxValue = Math.max(...statistics.weeklyActivity.map(d => d.count));
-              const normalizedHeight = maxValue > 0 ? (dayData.count / maxValue) * 80 + 20 : 20;
-              const pointSize = Math.max(10, Math.min(20, normalizedHeight / 3));
-              
-              return (
-                <div 
-                  key={index} 
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    gap: '8px',
-                    position: 'relative',
-                    cursor: 'pointer'
-                  }}
-                  onMouseEnter={(e) => {
-                    const tooltip = e.currentTarget.querySelector('.point-tooltip');
-                    if (tooltip) tooltip.style.opacity = '1';
-                  }}
-                  onMouseLeave={(e) => {
-                    const tooltip = e.currentTarget.querySelector('.point-tooltip');
-                    if (tooltip) tooltip.style.opacity = '0';
-                  }}
-                >
-                  {/* Línea de conexión (opcional) */}
-                  {index < statistics.weeklyActivity.length - 1 && (
-                    <div style={{
-                      position: 'absolute',
-                      top: `${80 - normalizedHeight + pointSize/2}px`,
-                      left: '50%',
-                      width: '100%',
-                      height: '2px',
-                      background: safeColor('primary'),
-                      opacity: 0.4,
-                      zIndex: 1
-                    }} />
-                  )}
-                  
-                  {/* Punto principal */}
-                  <div style={{
-                    width: `${pointSize}px`,
-                    height: `${pointSize}px`,
-                    background: safeColor('primary'),
-                    borderRadius: '50%',
-                    transition: 'all 0.3s ease',
-                    position: 'relative',
-                    zIndex: 2,
-                    boxShadow: `0 3px 12px ${safeColor('primary')}50`,
-                    transform: `translateY(${80 - normalizedHeight}px)`,
-                    border: `2px solid ${safeColor('dark')}`
-                  }} />
-                  
-                  {/* Valor del punto (tooltip) */}
-                  <div 
-                    className="point-tooltip"
-                    style={{
-                      position: 'absolute',
-                      top: `${80 - normalizedHeight - 30}px`,
-                      left: '50%',
-                      transform: 'translateX(-50%)',
-                      background: safeColor('primary'),
-                      color: 'white',
-                      padding: '4px 8px',
-                      borderRadius: '6px',
-                      fontSize: '0.7rem',
-                      fontWeight: '600',
-                      opacity: 0,
-                      transition: 'opacity 0.3s ease',
-                      zIndex: 3,
-                      whiteSpace: 'nowrap',
-                      pointerEvents: 'none',
-                      boxShadow: `0 2px 8px ${safeColor('primary')}30`
-                    }}
-                  >
-                    {dayData.count} respuestas
-                  </div>
-                  
-                  {/* Etiqueta del día */}
-                  <span style={{
-                    fontSize: '0.7rem',
-                    color: safeColor('textMuted'),
-                    marginTop: '8px'
-                  }}>
-                    {dayData.day}
-                  </span>
-                </div>
-              );
-            })
-          ) : (
-            [1, 2, 3, 4, 5, 6, 7].map((day, index) => (
-              <div key={day} style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: '8px'
-              }}>
-                <div style={{
-                  width: '12px',
-                  height: '12px',
-                  background: safeColor('border'),
-                  borderRadius: '50%',
-                  opacity: 0.5
-                }} />
-                <span style={{
-                  fontSize: '0.7rem',
-                  color: safeColor('textMuted')
-                }}>
-                  {['L', 'M', 'X', 'J', 'V', 'S', 'D'][index]}
-                </span>
-              </div>
-            ))
-          )}
-        </div>
-
-        {/* Estadísticas resumidas funcionales */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(3, 1fr)',
-          gap: '16px'
-        }}>
-          <div style={{
-            background: safeColor('success') + '20',
-            borderRadius: '12px',
-            padding: '16px',
-            textAlign: 'center',
-            border: `1px solid ${safeColor('success')}33`
-          }}>
-            <div style={{
-              fontSize: '1.5rem',
-              marginBottom: '8px'
-            }}>📈</div>
-            <div style={{
-              fontSize: '1.2rem',
-              fontWeight: '600',
-              color: safeColor('success'),
-              marginBottom: '4px'
-            }}>
-              {statistics.weeklyStats?.average || 0}
-            </div>
-            <div style={{
-              fontSize: '0.8rem',
-              color: safeColor('textMuted')
-            }}>
-              Promedio
-            </div>
-          </div>
-
-          <div style={{
-            background: safeColor('warning') + '20',
-            borderRadius: '12px',
-            padding: '16px',
-            textAlign: 'center',
-            border: `1px solid ${safeColor('warning')}33`
-          }}>
-            <div style={{
-              fontSize: '1.5rem',
-              marginBottom: '8px'
-            }}>📊</div>
-            <div style={{
-              fontSize: '1.2rem',
-              fontWeight: '600',
-              color: safeColor('warning'),
-              marginBottom: '4px'
-            }}>
-              {statistics.weeklyStats?.maximum || 0}
-            </div>
-            <div style={{
-              fontSize: '0.8rem',
-              color: safeColor('textMuted')
-            }}>
-              Máximo
-            </div>
-          </div>
-
-          <div style={{
-            background: safeColor('error') + '20',
-            borderRadius: '12px',
-            padding: '16px',
-            textAlign: 'center',
-            border: `1px solid ${safeColor('error')}33`
-          }}>
-            <div style={{
-              fontSize: '1.5rem',
-              marginBottom: '8px'
-            }}>📅</div>
-            <div style={{
-              fontSize: '1.2rem',
-              fontWeight: '600',
-              color: safeColor('error'),
-              marginBottom: '4px'
-            }}>
-              {statistics.weeklyStats?.total || 0}
-            </div>
-            <div style={{
-              fontSize: '0.8rem',
-              color: safeColor('textMuted')
-            }}>
-              Total
-            </div>
-          </div>
-        </div>
       </div>
 
     </div>

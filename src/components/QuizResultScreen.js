@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { AppConstants } from '../utils/constants';
 import CustomButton from './CustomButton';
+import useModal from '../hooks/useModal';
+import CustomModal from './CustomModal';
 
 // Fallback colors en caso de que AppConstants no esté disponible
 const fallbackColors = {
@@ -21,6 +23,7 @@ const safeColor = (colorName) => {
 
 const QuizResultScreen = ({ results, onRetry, onBackToDashboard }) => {
   const [animationStep, setAnimationStep] = useState(0);
+  const { modalState, showModal, hideModal, showInfo } = useModal();
 
   useEffect(() => {
     const timer = setTimeout(() => setAnimationStep(1), 500);
@@ -363,7 +366,7 @@ const QuizResultScreen = ({ results, onRetry, onBackToDashboard }) => {
 
           <CustomButton
             text="Compartir Resultado"
-            onClick={() => alert('Función de compartir próximamente')}
+            onClick={() => showInfo('Próximamente', 'Función de compartir próximamente')}
             icon="📤"
             style={{
               background: safeColor('border')
@@ -371,6 +374,17 @@ const QuizResultScreen = ({ results, onRetry, onBackToDashboard }) => {
           />
         </div>
       </div>
+      
+      {/* Modal personalizado */}
+      <CustomModal
+        isOpen={modalState.isOpen}
+        onClose={hideModal}
+        title={modalState.title}
+        message={modalState.message}
+        type={modalState.type}
+        buttons={modalState.buttons}
+        showCloseButton={modalState.showCloseButton}
+      />
     </div>
   );
 };

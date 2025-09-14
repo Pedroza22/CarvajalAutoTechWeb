@@ -30,8 +30,8 @@ const QuizExplanationsView = ({ category, user, studentAnswers, onBack }) => {
       questions.find(q => q.id === questionId)
     ).filter(Boolean);
     
-    console.log('📋 Preguntas ordenadas:', sortedQuestions.length);
-    console.log('📋 IDs ordenados (cronológico):', orderedQuestionIds);
+    // console.log('📋 Preguntas ordenadas:', sortedQuestions.length);
+    // console.log('📋 IDs ordenados (cronológico):', orderedQuestionIds);
     return sortedQuestions;
   }, [questions, loadedStudentAnswers, orderedQuestionIds]);
 
@@ -101,7 +101,7 @@ const QuizExplanationsView = ({ category, user, studentAnswers, onBack }) => {
       });
 
       console.log('✅ Respuestas del estudiante cargadas:', Object.keys(answersMap).length);
-      console.log('📋 IDs de preguntas con respuestas (orden cronológico):', orderedQuestionIds);
+      // console.log('📋 IDs de preguntas con respuestas (orden cronológico):', orderedQuestionIds);
       setLoadedStudentAnswers(answersMap);
       setOrderedQuestionIds(orderedQuestionIds);
     } catch (error) {
@@ -152,15 +152,15 @@ const QuizExplanationsView = ({ category, user, studentAnswers, onBack }) => {
     
     const isStudentAnswer = optionLetter === studentAnswer;
 
-    // Debug temporal para resaltado
-    console.log(`🎯 RESALTADO - Pregunta ${question.id.substring(0,8)}... Opción ${optionLetter}:`, {
-      isCorrect,
-      isStudentAnswer,
-      studentAnswer,
-      correctAnswer: question.correct_answer,
-      optionLetter,
-      questionOptions: question.options
-    });
+    // Debug temporal para resaltado (comentado)
+    // console.log(`🎯 RESALTADO - Pregunta ${question.id.substring(0,8)}... Opción ${optionLetter}:`, {
+    //   isCorrect,
+    //   isStudentAnswer,
+    //   studentAnswer,
+    //   correctAnswer: question.correct_answer,
+    //   optionLetter,
+    //   questionOptions: question.options
+    // });
 
     let style;
     if (isCorrect) {
@@ -169,21 +169,21 @@ const QuizExplanationsView = ({ category, user, studentAnswers, onBack }) => {
         border: `2px solid ${safeColor('success')}`,
         color: safeColor('success')
       };
-      console.log(`✅ APLICANDO ESTILO VERDE para opción ${optionLetter}`);
+      // console.log(`✅ APLICANDO ESTILO VERDE para opción ${optionLetter}`);
     } else if (isStudentAnswer && !isCorrect) {
       style = {
         background: safeColor('error') + '20',
         border: `2px solid ${safeColor('error')}`,
         color: safeColor('error')
       };
-      console.log(`❌ APLICANDO ESTILO ROJO para opción ${optionLetter}`);
+      // console.log(`❌ APLICANDO ESTILO ROJO para opción ${optionLetter}`);
     } else {
       style = {
         background: safeColor('cardBg'),
         border: `1px solid ${safeColor('border')}`,
         color: safeColor('textPrimary')
       };
-      console.log(`⚪ APLICANDO ESTILO NORMAL para opción ${optionLetter}`);
+      // console.log(`⚪ APLICANDO ESTILO NORMAL para opción ${optionLetter}`);
     }
     
     return style;
@@ -276,7 +276,8 @@ const QuizExplanationsView = ({ category, user, studentAnswers, onBack }) => {
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          marginBottom: '16px'
+          marginBottom: '20px',
+          gap: '16px'
         }}>
           <button
             onClick={onBack}
@@ -284,10 +285,13 @@ const QuizExplanationsView = ({ category, user, studentAnswers, onBack }) => {
               background: 'transparent',
               border: `1px solid ${safeColor('border')}`,
               color: safeColor('textPrimary'),
-              padding: '8px 16px',
-              borderRadius: '8px',
+              padding: '6px 12px',
+              borderRadius: '6px',
               cursor: 'pointer',
-              fontSize: '0.9rem'
+              fontSize: '0.8rem',
+              fontWeight: '500',
+              minWidth: 'auto',
+              height: 'auto'
             }}
           >
             ← Volver
@@ -399,31 +403,43 @@ const QuizExplanationsView = ({ category, user, studentAnswers, onBack }) => {
             Selecciona tu respuesta:
           </p>
           
-          {currentQuestion.options && Object.entries(currentQuestion.options).map(([key, option]) => (
-            <div
-              key={key}
-              style={{
-                ...getOptionStyle(key, currentQuestion),
-                padding: '16px',
-                marginBottom: '12px',
-                borderRadius: '8px',
-                cursor: 'default',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px',
-                fontSize: '1rem',
-                fontWeight: '500'
-              }}
-            >
-              <span style={{ fontSize: '1.2rem' }}>
-                {getOptionIcon(key, currentQuestion)}
-              </span>
-              <span style={{ fontWeight: '600', minWidth: '30px' }}>
-                {key}.
-              </span>
-              <span>{option}</span>
-            </div>
-          ))}
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px',
+            marginTop: '16px'
+          }}>
+            {currentQuestion.options && Object.entries(currentQuestion.options).map(([key, option]) => (
+              <div
+                key={key}
+                style={{
+                  ...getOptionStyle(key, currentQuestion),
+                  padding: '20px',
+                  borderRadius: '12px',
+                  cursor: 'default',
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '12px',
+                  fontSize: '0.95rem',
+                  fontWeight: '500',
+                  minHeight: '80px',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                <span style={{ fontSize: '1.3rem', marginTop: '2px' }}>
+                  {getOptionIcon(key, currentQuestion)}
+                </span>
+                <div style={{ flex: 1 }}>
+                  <span style={{ fontWeight: '700', fontSize: '1.1rem', color: safeColor('primary') }}>
+                    {key}.
+                  </span>
+                  <div style={{ marginTop: '4px', lineHeight: '1.4' }}>
+                    {option}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* Explicación */}
