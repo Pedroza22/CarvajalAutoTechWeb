@@ -16,6 +16,9 @@ const AdminStudentDetailPage = ({ onNavigate, student }) => {
   const [activeTab, setActiveTab] = useState('quizzes');
   const [categoryExplanations, setCategoryExplanations] = useState({});
   const [connectionError, setConnectionError] = useState(false);
+  const [selectedQuiz, setSelectedQuiz] = useState(null);
+  const [quizDetails, setQuizDetails] = useState(null);
+  const [loadingDetails, setLoadingDetails] = useState(false);
   const { modalState, showModal, hideModal, showSuccess, showError, showConfirm } = useModal();
 
   const loadStudentDetail = useCallback(async () => {
@@ -250,7 +253,7 @@ const AdminStudentDetailPage = ({ onNavigate, student }) => {
       console.log('🔍 Nuevo modo:', newModo);
       
       // Actualizar el modo en la base de datos
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('student_categories')
         .update({ 
           modo: newModo,
@@ -306,26 +309,21 @@ const AdminStudentDetailPage = ({ onNavigate, student }) => {
       console.log('🔍 Nuevo estado:', newStatus);
       
       // Actualizar el estado en la base de datos usando el servicio
-      const result = await StudentsService.toggleCategoryPublication(
+      await StudentsService.toggleCategoryPublication(
         studentData.id, 
         category.categoryId, 
         newStatus
       );
 
-      if (!result.success) {
-        console.error('❌ Error actualizando estado de explicaciones:', result.error);
-        showError('Error', `Error actualizando estado de explicaciones: ${result.error}`);
-        return;
-      }
-
-      console.log('✅ Estado de explicaciones actualizado:', newStatus);
-      console.log('✅ Resultado:', result);
+      // Mostrar mensaje de confirmación
       showSuccess(
         'Estado Actualizado',
         newStatus 
-          ? `Explicaciones habilitadas para ${category.categoryName}` 
-          : `Explicaciones deshabilitadas para ${category.categoryName}`
+          ? `📚 Explicaciones habilitadas para ${category.categoryName}. El estudiante puede ver las explicaciones.`
+          : `🔒 Explicaciones deshabilitadas para ${category.categoryName}. El estudiante no puede ver las explicaciones.`
       );
+
+      console.log('✅ Estado de explicaciones actualizado:', newStatus);
       
       // Recargar datos del estudiante
       await refreshStudentData();
@@ -377,97 +375,25 @@ const AdminStudentDetailPage = ({ onNavigate, student }) => {
     }
   };
 
-  const handleViewCategory = (category) => {
-    console.log('👁️ Viendo detalles de categoría:', category.categoryName);
-    
-    // Crear un modal con información detallada de la categoría
-    const modal = document.createElement('div');
-    modal.style.cssText = `
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.8);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 1000;
-    `;
-    
-    const modalContent = document.createElement('div');
-    modalContent.style.cssText = `
-      background: #1a1a1a;
-      border: 1px solid #333;
-      border-radius: 12px;
-      padding: 24px;
-      max-width: 700px;
-      width: 90%;
-      max-height: 85vh;
-      overflow-y: auto;
-      color: white;
-      font-family: Arial, sans-serif;
-    `;
-    
-    const explanations = categoryExplanations[category.categoryId] || 'No hay explicaciones disponibles';
-    
-    modalContent.innerHTML = `
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-        <h2 style="margin: 0; color: #4CAF50;">📚 ${category.categoryName}</h2>
-        <button onclick="this.closest('.modal').remove()" style="
-          background: none;
-          border: none;
-          color: #999;
-          font-size: 24px;
-          cursor: pointer;
-          padding: 0;
-          width: 30px;
-          height: 30px;
-        ">×</button>
-      </div>
+  // Función para manejar el clic en un quiz del historial
+  const handleViewQuizDetails = async (quiz) => {
+    try {
+      setLoadingDetails(true);
+      setSelectedQuiz(quiz);
       
-      <div style="margin-bottom: 20px;">
-        <h3 style="color: #4CAF50; margin-bottom: 10px;">📊 Estadísticas</h3>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-          <div style="background: #2a2a2a; padding: 12px; border-radius: 8px;">
-            <div style="color: #999; font-size: 14px;">Preguntas</div>
-            <div style="font-size: 20px; font-weight: bold; color: #4CAF50;">${category.totalQuestions}</div>
-          </div>
-          <div style="background: #2a2a2a; padding: 12px; border-radius: 8px;">
-            <div style="color: #999; font-size: 14px;">Precisión</div>
-            <div style="font-size: 20px; font-weight: bold; color: ${category.accuracy >= 70 ? '#4CAF50' : category.accuracy >= 50 ? '#FF9800' : '#F44336'};">${category.accuracy}%</div>
-          </div>
-        </div>
-      </div>
+      console.log('🔍 Cargando detalles del quiz:', quiz);
       
-      <div style="margin-bottom: 20px;">
-        <h3 style="color: #4CAF50; margin-bottom: 10px;">📤 Estado de Envío</h3>
-        <div style="background: #2a2a2a; padding: 12px; border-radius: 8px;">
-          ${category.published ? 
-            '<span style="color: #4CAF50;">✅ Explicaciones enviadas</span>' : 
-            '<span style="color: #FF9800;">⏳ Pendiente de envío</span>'
-          }
-        </div>
-      </div>
+      // Obtener las preguntas y respuestas del quiz
+      const details = await StudentsService.getQuizDetails(quiz.categoryId, student.id);
+      console.log('✅ Detalles del quiz cargados:', details);
       
-      <div>
-        <h3 style="color: #4CAF50; margin-bottom: 10px;">💡 Explicaciones</h3>
-        <div style="background: #2a2a2a; padding: 16px; border-radius: 8px; max-height: 400px; overflow-y: auto; word-wrap: break-word;">
-          <div style="margin: 0; white-space: pre-wrap; font-family: inherit; font-size: 13px; line-height: 1.5; color: #e0e0e0;">${explanations}</div>
-        </div>
-      </div>
-    `;
-    
-    modal.className = 'modal';
-    modal.appendChild(modalContent);
-    document.body.appendChild(modal);
-    
-    // Cerrar modal al hacer clic fuera
-    modal.addEventListener('click', (e) => {
-      if (e.target === modal) {
-        modal.remove();
-      }
-    });
+      setQuizDetails(details);
+    } catch (error) {
+      console.error('❌ Error cargando detalles del quiz:', error);
+      showError('Error', 'No se pudieron cargar los detalles del quiz');
+    } finally {
+      setLoadingDetails(false);
+    }
   };
 
   const loadCategoryExplanations = async () => {
@@ -826,13 +752,26 @@ const AdminStudentDetailPage = ({ onNavigate, student }) => {
               {quizHistory.map((quiz, index) => (
                 <div
                   key={quiz.id}
+                  onClick={() => handleViewQuizDetails(quiz)}
                   style={{
                     padding: '20px',
                     borderBottom: index < quizHistory.length - 1 ? `1px solid ${safeColor('border')}33` : 'none',
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
-                    gap: '16px'
+                    gap: '16px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    borderRadius: '8px',
+                    margin: '4px 0'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = safeColor('primary') + '10';
+                    e.currentTarget.style.borderColor = safeColor('primary') + '40';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'transparent';
+                    e.currentTarget.style.borderColor = 'transparent';
                   }}
                 >
                   <div style={{ flex: 1 }}>
@@ -936,6 +875,14 @@ const AdminStudentDetailPage = ({ onNavigate, student }) => {
                       color: safeColor('textMuted')
                     }}>
                       {quiz.correctAnswers}/{quiz.totalQuestions} correctas
+                    </div>
+                    <div style={{
+                      fontSize: '0.8rem',
+                      color: safeColor('primary'),
+                      marginTop: '8px',
+                      fontWeight: '500'
+                    }}>
+                      👆 Haz clic para ver detalles
                     </div>
                   </div>
                 </div>
@@ -1099,6 +1046,331 @@ const AdminStudentDetailPage = ({ onNavigate, student }) => {
             </div>
           )}
             </div>
+        </div>
+      )}
+
+      {/* Modal de detalles del quiz */}
+      {selectedQuiz && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          background: 'rgba(0, 0, 0, 0.8)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: '20px'
+        }}>
+          <div style={{
+            background: safeColor('cardBg'),
+            borderRadius: '16px',
+            maxWidth: '900px',
+            width: '100%',
+            maxHeight: '90vh',
+            overflow: 'hidden',
+            border: `1px solid ${safeColor('border')}`
+          }}>
+            {/* Header del modal */}
+            <div style={{
+              padding: '24px',
+              borderBottom: `1px solid ${safeColor('border')}`,
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}>
+              <h2 style={{
+                fontSize: '1.5rem',
+                fontWeight: '600',
+                color: safeColor('textPrimary'),
+                margin: 0
+              }}>
+                📋 Detalles del Quiz: {selectedQuiz.category}
+              </h2>
+              <button
+                onClick={() => {
+                  setSelectedQuiz(null);
+                  setQuizDetails(null);
+                }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: safeColor('textMuted'),
+                  fontSize: '24px',
+                  cursor: 'pointer',
+                  padding: '8px',
+                  borderRadius: '8px',
+                  transition: 'background 0.2s'
+                }}
+                onMouseEnter={(e) => e.target.style.background = safeColor('border')}
+                onMouseLeave={(e) => e.target.style.background = 'none'}
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Contenido del modal */}
+            <div style={{
+              padding: '24px',
+              maxHeight: 'calc(90vh - 120px)',
+              overflowY: 'auto'
+            }}>
+              {loadingDetails ? (
+                <div style={{
+                  textAlign: 'center',
+                  padding: '40px',
+                  color: safeColor('textPrimary')
+                }}>
+                  <div style={{ fontSize: '32px', marginBottom: '16px' }}>⏳</div>
+                  <p>Cargando detalles del quiz...</p>
+                </div>
+              ) : quizDetails ? (
+                <div>
+                  {/* Resumen del quiz */}
+                  <div style={{
+                    background: safeColor('primary') + '10',
+                    borderRadius: '12px',
+                    padding: '20px',
+                    marginBottom: '24px',
+                    border: `1px solid ${safeColor('primary')}30`
+                  }}>
+                    <h3 style={{
+                      fontSize: '1.2rem',
+                      fontWeight: '600',
+                      color: safeColor('textPrimary'),
+                      margin: '0 0 16px 0'
+                    }}>
+                      📊 Resumen del Quiz
+                    </h3>
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+                      gap: '16px'
+                    }}>
+                      <div>
+                        <div style={{ color: safeColor('textMuted'), fontSize: '0.9rem' }}>Puntuación</div>
+                        <div style={{ color: getScoreColor(selectedQuiz.score), fontSize: '1.5rem', fontWeight: '600' }}>
+                          {selectedQuiz.score}%
+                        </div>
+                      </div>
+                      <div>
+                        <div style={{ color: safeColor('textMuted'), fontSize: '0.9rem' }}>Correctas</div>
+                        <div style={{ color: safeColor('success'), fontSize: '1.5rem', fontWeight: '600' }}>
+                          {selectedQuiz.correctAnswers}
+                        </div>
+                      </div>
+                      <div>
+                        <div style={{ color: safeColor('textMuted'), fontSize: '0.9rem' }}>Incorrectas</div>
+                        <div style={{ color: safeColor('error'), fontSize: '1.5rem', fontWeight: '600' }}>
+                          {selectedQuiz.incorrectAnswers}
+                        </div>
+                      </div>
+                      <div>
+                        <div style={{ color: safeColor('textMuted'), fontSize: '0.9rem' }}>Tiempo</div>
+                        <div style={{ color: safeColor('info'), fontSize: '1.5rem', fontWeight: '600' }}>
+                          {formatTime(selectedQuiz.timeSpent)}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Lista de preguntas */}
+                  <div>
+                    <h3 style={{
+                      fontSize: '1.2rem',
+                      fontWeight: '600',
+                      color: safeColor('textPrimary'),
+                      margin: '0 0 16px 0'
+                    }}>
+                      📝 Preguntas y Respuestas
+                    </h3>
+                    
+                    {quizDetails.questions?.map((question, index) => (
+                      <div
+                        key={question.id || index}
+                        style={{
+                          background: safeColor('dark'),
+                          borderRadius: '12px',
+                          padding: '20px',
+                          marginBottom: '16px',
+                          border: `1px solid ${safeColor('border')}`
+                        }}
+                      >
+                        {/* Header de la pregunta */}
+                        <div style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'flex-start',
+                          marginBottom: '16px'
+                        }}>
+                          <div style={{ flex: 1 }}>
+                            <div style={{
+                              fontSize: '0.9rem',
+                              color: safeColor('textMuted'),
+                              marginBottom: '8px'
+                            }}>
+                              Pregunta {index + 1}
+                            </div>
+                            <h4 style={{
+                              fontSize: '1.1rem',
+                              fontWeight: '600',
+                              color: safeColor('textPrimary'),
+                              margin: 0,
+                              lineHeight: '1.4'
+                            }}>
+                              {question.question}
+                            </h4>
+                          </div>
+                          
+                          <div style={{
+                            marginLeft: '16px',
+                            textAlign: 'right'
+                          }}>
+                            {question.isCorrect ? (
+                              <span style={{
+                                background: safeColor('success') + '20',
+                                color: safeColor('success'),
+                                padding: '6px 12px',
+                                borderRadius: '8px',
+                                fontSize: '0.8rem',
+                                fontWeight: '600',
+                                border: `1px solid ${safeColor('success')}40`
+                              }}>
+                                ✓ Correcta
+                              </span>
+                            ) : (
+                              <span style={{
+                                background: safeColor('error') + '20',
+                                color: safeColor('error'),
+                                padding: '6px 12px',
+                                borderRadius: '8px',
+                                fontSize: '0.8rem',
+                                fontWeight: '600',
+                                border: `1px solid ${safeColor('error')}40`
+                              }}>
+                                ✗ Incorrecta
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Opciones de respuesta */}
+                        <div style={{ marginBottom: '16px' }}>
+                          <div style={{
+                            fontSize: '0.9rem',
+                            color: safeColor('textMuted'),
+                            marginBottom: '8px'
+                          }}>
+                            Opciones:
+                          </div>
+                          <div style={{ display: 'grid', gap: '8px' }}>
+                            {question.options?.map((option, optIndex) => {
+                              const optionKey = String.fromCharCode(65 + optIndex);
+                              const isSelected = question.studentAnswer === optionKey;
+                              const isCorrect = question.correctAnswer === option;
+                              
+                              return (
+                                <div
+                                  key={optIndex}
+                                  style={{
+                                    padding: '12px 16px',
+                                    borderRadius: '8px',
+                                    border: `2px solid ${
+                                      isCorrect 
+                                        ? safeColor('success')
+                                        : isSelected && !isCorrect
+                                          ? safeColor('error')
+                                          : safeColor('border')
+                                    }`,
+                                    background: isCorrect 
+                                      ? safeColor('success') + '10'
+                                      : isSelected && !isCorrect
+                                        ? safeColor('error') + '10'
+                                        : safeColor('cardBg'),
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '12px'
+                                  }}
+                                >
+                                  <span style={{
+                                    fontWeight: '600',
+                                    color: isCorrect 
+                                      ? safeColor('success')
+                                      : isSelected && !isCorrect
+                                        ? safeColor('error')
+                                        : safeColor('textPrimary'),
+                                    minWidth: '20px'
+                                  }}>
+                                    {optionKey}.
+                                  </span>
+                                  <span style={{
+                                    color: isCorrect 
+                                      ? safeColor('success')
+                                      : isSelected && !isCorrect
+                                        ? safeColor('error')
+                                        : safeColor('textPrimary'),
+                                    flex: 1
+                                  }}>
+                                    {option}
+                                  </span>
+                                  {isCorrect && (
+                                    <span style={{ color: safeColor('success'), fontSize: '1.2rem' }}>✓</span>
+                                  )}
+                                  {isSelected && !isCorrect && (
+                                    <span style={{ color: safeColor('error'), fontSize: '1.2rem' }}>✗</span>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Explicación */}
+                        {question.explanation && (
+                          <div style={{
+                            background: safeColor('info') + '10',
+                            borderRadius: '8px',
+                            padding: '16px',
+                            border: `1px solid ${safeColor('info')}30`
+                          }}>
+                            <div style={{
+                              fontSize: '0.9rem',
+                              color: safeColor('info'),
+                              fontWeight: '600',
+                              marginBottom: '8px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '8px'
+                            }}>
+                              💡 Explicación:
+                            </div>
+                            <p style={{
+                              color: safeColor('textPrimary'),
+                              margin: 0,
+                              lineHeight: '1.5'
+                            }}>
+                              {question.explanation}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div style={{
+                  textAlign: 'center',
+                  padding: '40px',
+                  color: safeColor('textMuted')
+                }}>
+                  <div style={{ fontSize: '32px', marginBottom: '16px' }}>❌</div>
+                  <p>No se pudieron cargar los detalles del quiz</p>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
       

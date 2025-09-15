@@ -149,37 +149,122 @@ class StatisticsService {
   }
 
   /**
-   * Obtiene top estudiantes desde la vista stats_top_students
+   * Obtiene top estudiantes con mejor puntuación
    */
   async getTopStudentsFromView() {
     try {
-      console.log('🔍 Obteniendo top estudiantes desde stats_top_students...');
+      console.log('🔍 Obteniendo top estudiantes con mejor puntuación...');
+      
+      // Consulta directa para obtener estudiantes con mejor puntuación
       const { data, error } = await supabase
-        .from('stats_top_students')
-        .select('*')
-        .limit(5);
+        .from('student_answers')
+        .select(`
+          student_id,
+          is_correct,
+          app_users_enriched!student_answers_student_id_fkey (
+            id,
+            email,
+            full_name,
+            raw_user_meta_data
+          )
+        `);
 
       if (error) {
-        console.error('❌ Error en consulta stats_top_students:', error);
+        console.error('❌ Error obteniendo respuestas de estudiantes:', error);
         throw error;
       }
-      
-      console.log('📊 Datos raw de top estudiantes:', data);
-      
-      const formattedData = data ? data.map(student => ({
-        name: student.name || 'Sin nombre',
-        email: student.email,
-        accuracy: student.accuracy,
-        questionsAnswered: student.questions_answered,
-        rank: student.rank
-      })) : [];
-      
-      console.log('✅ Top estudiantes formateados:', formattedData);
-      return formattedData;
+
+      // Agrupar por estudiante y calcular estadísticas
+      const studentStats = {};
+      data?.forEach(answer => {
+        const studentId = answer.student_id;
+        const student = answer.app_users_enriched;
+        
+        if (!studentStats[studentId]) {
+          studentStats[studentId] = {
+            id: studentId,
+            name: this.getDisplayName(student),
+            email: student?.email || 'Sin email',
+            totalAnswers: 0,
+            correctAnswers: 0,
+            accuracy: 0
+          };
+        }
+        
+        studentStats[studentId].totalAnswers++;
+        if (answer.is_correct) {
+          studentStats[studentId].correctAnswers++;
+        }
+      });
+
+      // Calcular precisión y ordenar por puntuación
+      const studentsWithStats = Object.values(studentStats)
+        .filter(student => student.totalAnswers > 0) // Solo estudiantes con respuestas
+        .map(student => ({
+          ...student,
+          accuracy: Math.round((student.correctAnswers / student.totalAnswers) * 100)
+        }))
+        .sort((a, b) => {
+          // Ordenar por precisión, luego por número de respuestas
+          if (b.accuracy !== a.accuracy) {
+            return b.accuracy - a.accuracy;
+          }
+          return b.totalAnswers - a.totalAnswers;
+        })
+        .slice(0, 5) // Top 5
+        .map((student, index) => ({
+          ...student,
+          rank: index + 1
+        }));
+
+      console.log('✅ Top 5 estudiantes calculados:', studentsWithStats);
+      return studentsWithStats;
     } catch (error) {
       console.error('❌ Error obteniendo top estudiantes:', error);
       return [];
     }
+  }
+
+  /**
+   * Función auxiliar para obtener nombre de display
+   */
+  getDisplayName(student) {
+    if (!student) return 'Estudiante';
+    
+    // 1) full_name desde la vista
+    const full = student.full_name?.toString();
+    if (full && full.trim() && !full.includes('@')) {
+      return full.trim();
+    }
+
+    // 2) metadata parseada
+    const meta = student.raw_user_meta_data;
+    if (meta) {
+      const firstName = meta.first_name || meta.firstName;
+      const lastName = meta.last_name || meta.lastName;
+      if (firstName || lastName) {
+        return `${firstName || ''} ${lastName || ''}`.trim();
+      }
+    }
+
+    // 3) fallback: convertir email a nombre presentable
+    const email = student.email?.toString() || '';
+    return this.prettifyEmail(email);
+  }
+
+  /**
+   * Función auxiliar para convertir email a nombre
+   */
+  prettifyEmail(email) {
+    if (!email) return 'Estudiante';
+    const local = email.split('@')[0];
+    const cleaned = local.replace(/[._\-+]/g, ' ');
+    const parts = cleaned.split(/\s+/).filter(p => p.length > 0);
+    const capitalized = parts.map(p => {
+      if (p.length <= 1) return p.toUpperCase();
+      return p[0].toUpperCase() + p.substring(1);
+    }).join(' ');
+    return capitalized || email;
   }
 
   /**

@@ -30,6 +30,9 @@ const CategoryQuestionsPage = ({ category, user, onBack, onStartQuiz }) => {
   const [showExplanations, setShowExplanations] = useState(false);
   const [quizMode, setQuizMode] = useState(true); // true = puede hacer quiz, false = solo explicaciones
   const [studentId, setStudentId] = useState(null);
+  const [answeredQuestions, setAnsweredQuestions] = useState({}); // Preguntas ya respondidas en modo estudio
+  const [showAnswerFeedback, setShowAnswerFeedback] = useState({}); // Controla si mostrar feedback para cada pregunta
+  const [showExplanation, setShowExplanation] = useState({}); // Controla si mostrar explicación para cada pregunta
   const [stats, setStats] = useState({
     totalAnswers: 0,
     correctAnswers: 0,
@@ -42,50 +45,85 @@ const CategoryQuestionsPage = ({ category, user, onBack, onStartQuiz }) => {
 
     try {
       setLoading(true);
+      console.log('🔍 Cargando datos de categoría...', { categoryId: category.id, userId: user.id });
+      
+      // Obtener el ID del estudiante primero
+      const { data: studentData, error: studentError } = await supabase
+        .from('user_profiles')
+        .select('id')
+        .eq('id', user.id)
+        .single();
+      
+      if (studentError) {
+        console.error('❌ Error obteniendo perfil del estudiante:', studentError);
+        return;
+      }
+      
+      const currentStudentId = studentData.id;
+      setStudentId(currentStudentId);
+      console.log('👤 Student ID obtenido:', currentStudentId);
+      
       // Solo cargar estadísticas inicialmente, no las preguntas
       const statsData = await StudentCategoriesService.getCategoryStats(user.id, category.id);
       setStats(statsData);
       
-      // Verificar si las explicaciones están habilitadas y el modo del quiz (solo si tenemos studentId)
-      if (studentId) {
-        const explanationsStatus = await StudentCategoriesService.checkExplanationsEnabled(studentId, category.id);
-        setExplanationsEnabled(explanationsStatus);
+      // Verificar si las explicaciones están habilitadas y el modo del quiz
+      const explanationsStatus = await StudentCategoriesService.checkExplanationsEnabled(currentStudentId, category.id);
+      setExplanationsEnabled(explanationsStatus);
+      
+      // Verificar el modo del quiz
+      const { data: categoryData, error: categoryError } = await supabase
+        .from('student_categories')
+        .select('modo')
+        .eq('student_id', currentStudentId)
+        .eq('category_id', category.id)
+        .single();
         
-        // Verificar el modo del quiz
-        const { data: categoryData, error: categoryError } = await supabase
-          .from('student_categories')
-          .select('modo')
-          .eq('student_id', studentId)
-          .eq('category_id', category.id)
-          .single();
-          
-        if (!categoryError && categoryData) {
-          const currentQuizMode = categoryData.modo !== false; // Default true si no está definido
-          setQuizMode(currentQuizMode);
-          console.log('📊 Modo del quiz:', currentQuizMode ? 'Puede hacer quiz' : 'Solo explicaciones');
-          
-          // Si modo = false, mostrar solo explicaciones
-          if (!currentQuizMode) {
-            setShowExplanations(true);
-            setQuizCompleted(true);
-          }
+      console.log('📊 Datos de categoría obtenidos:', { categoryData, categoryError });
+      
+      if (!categoryError && categoryData) {
+        const currentQuizMode = categoryData.modo !== false; // Default true si no está definido
+        setQuizMode(currentQuizMode);
+        console.log('📊 Modo del quiz:', currentQuizMode ? 'Puede hacer quiz' : 'Solo explicaciones');
+        
+        // Si modo = false, activar modo estudio interactivo (no mostrar explicaciones directamente)
+        if (!currentQuizMode) {
+          console.log('📚 Activando modo estudio interactivo');
+          console.log('📚 Configurando quizStarted = true y quizStartTime');
+          // Iniciar el quiz en modo estudio
+          setQuizStarted(true);
+          setQuizStartTime(new Date());
+          // Las preguntas se cargarán automáticamente en el useEffect
+        } else {
+          console.log('🎮 Modo quiz activado, no iniciando automáticamente');
         }
-        
-        console.log('📊 Explicaciones habilitadas:', explanationsStatus);
+      } else {
+        console.log('⚠️ No se encontraron datos de categoría para el estudiante, usando modo quiz por defecto');
+        setQuizMode(true); // Default a modo quiz
       }
+      
+      console.log('📊 Explicaciones habilitadas:', explanationsStatus);
     } catch (error) {
       console.error('❌ Error cargando datos de categoría:', error);
     } finally {
       setLoading(false);
     }
-  }, [category?.id, user?.id, studentId]);
+  }, [category?.id, user?.id]);
 
   const loadQuestions = useCallback(async () => {
-    if (!category?.id || !user?.id) return;
+    if (!category?.id || !user?.id) {
+      console.log('⚠️ No se pueden cargar preguntas: category.id o user.id no disponible');
+      return;
+    }
 
     try {
+      console.log('📚 Cargando preguntas para categoría:', category.id, 'usuario:', user.id);
       setLoading(true);
       const questionsData = await StudentCategoriesService.getCategoryQuestions(category.id, user.id);
+      console.log('📚 Preguntas cargadas:', questionsData?.length || 0);
+      if (questionsData && questionsData.length > 0) {
+        console.log('📝 Primera pregunta:', questionsData[0].question.substring(0, 50) + '...');
+      }
       setQuestions(questionsData);
     } catch (error) {
       console.error('❌ Error cargando preguntas:', error);
@@ -93,6 +131,14 @@ const CategoryQuestionsPage = ({ category, user, onBack, onStartQuiz }) => {
       setLoading(false);
     }
   }, [category?.id, user?.id]);
+
+  // Cargar preguntas automáticamente cuando el modo estudio esté activado
+  useEffect(() => {
+    if (!quizMode && quizStarted && questions.length === 0) {
+      console.log('📚 Modo estudio activado, cargando preguntas automáticamente...');
+      loadQuestions();
+    }
+  }, [quizMode, quizStarted, questions.length, loadQuestions]);
 
   const handleStartQuiz = async () => {
     setQuizStarted(true);
@@ -157,7 +203,37 @@ const CategoryQuestionsPage = ({ category, user, onBack, onStartQuiz }) => {
     setQuizStarted(true);
   };
 
+  const handleShowExplanation = (questionId) => {
+    console.log('📚 Mostrando explicación para pregunta:', questionId);
+    console.log('📚 Estado actual showAnswerFeedback antes:', showAnswerFeedback);
+    
+    setShowAnswerFeedback(prev => {
+      const newState = {
+        ...prev,
+        [questionId]: true
+      };
+      console.log('📚 Nuevo estado showAnswerFeedback:', newState);
+      return newState;
+    });
+    
+    setShowExplanation(prev => {
+      const newState = {
+        ...prev,
+        [questionId]: true
+      };
+      console.log('📚 Nuevo estado showExplanation:', newState);
+      return newState;
+    });
+    
+    // Forzar un re-render inmediato
+    setTimeout(() => {
+      console.log('📚 Estado showAnswerFeedback después del timeout:', showAnswerFeedback);
+    }, 100);
+  };
+
   const handleAnswerSelect = async (questionId, answer) => {
+    console.log('🎯 handleAnswerSelect llamado:', { questionId, answer, quizMode });
+    
     setStudentAnswers(prev => ({
       ...prev,
       [questionId]: answer
@@ -165,13 +241,28 @@ const CategoryQuestionsPage = ({ category, user, onBack, onStartQuiz }) => {
     
     console.log('✅ Respuesta seleccionada:', answer, 'para pregunta:', questionId);
     
+    // En modo estudio, marcar la pregunta como respondida (pero no mostrar feedback aún)
+    if (!quizMode) {
+      console.log('📚 Modo estudio - marcando pregunta como respondida');
+      setAnsweredQuestions(prev => {
+        const newState = {
+          ...prev,
+          [questionId]: true
+        };
+        console.log('📚 Nuevo estado answeredQuestions:', newState);
+        return newState;
+      });
+      return; // No mostrar modal en modo estudio
+    }
+    
+    // Solo mostrar modal de confirmación en modo quiz
     // Verificar que questions esté disponible
     if (!questions || questions.length === 0) {
       console.warn('⚠️ Questions no disponible, saltando modal de confirmación');
       return;
     }
     
-    // Mostrar mensaje de confirmación después de seleccionar respuesta
+    // Mostrar mensaje de confirmación después de seleccionar respuesta (solo en modo quiz)
     const question = questions.find(q => q.id === questionId);
     const questionNumber = questions.findIndex(q => q.id === questionId) + 1;
     
@@ -183,56 +274,93 @@ const CategoryQuestionsPage = ({ category, user, onBack, onStartQuiz }) => {
         left: 0;
         width: 100%;
         height: 100%;
-        background: rgba(0, 0, 0, 0.8);
+        background: rgba(0, 0, 0, 0.85);
         display: flex;
         justify-content: center;
         align-items: center;
         z-index: 10000;
+        backdrop-filter: blur(4px);
       `;
       
       const content = document.createElement('div');
       content.style.cssText = `
-        background: #1f2937;
-        border: 1px solid #4b5563;
-        border-radius: 12px;
-        padding: 24px;
-        max-width: 500px;
+        background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 20px;
+        padding: 32px;
+        max-width: 480px;
         width: 90%;
         text-align: center;
         color: white;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+        position: relative;
+        overflow: hidden;
       `;
       
+      // Agregar efecto de brillo sutil
+      const glow = document.createElement('div');
+      glow.style.cssText = `
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.5), transparent);
+      `;
+      content.appendChild(glow);
+      
       content.innerHTML = `
-        <div style="font-size: 48px; margin-bottom: 16px;">✅</div>
-        <h3 style="margin: 0 0 16px 0; color: #ffffff; font-size: 1.5rem;">
-          Respuesta registrada
+        <div style="
+          font-size: 64px; 
+          margin-bottom: 20px;
+          filter: drop-shadow(0 4px 8px rgba(34, 197, 94, 0.3));
+        ">✅</div>
+        <h3 style="
+          margin: 0 0 16px 0; 
+          color: #ffffff; 
+          font-size: 1.6rem;
+          font-weight: 700;
+          text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        ">
+          ¡Respuesta registrada!
         </h3>
-        <p style="margin: 0 0 24px 0; color: #d1d5db; font-size: 1rem;">
-          Has respondido la pregunta ${questionNumber} de ${questions.length}.<br>
+        <p style="
+          margin: 0 0 32px 0; 
+          color: #e5e7eb; 
+          font-size: 1.1rem;
+          line-height: 1.5;
+        ">
+          Has respondido la pregunta <strong>${questionNumber}</strong> de <strong>${questions.length}</strong>.<br>
           ¿Qué deseas hacer ahora?
         </p>
-        <div style="display: flex; gap: 12px; justify-content: center;">
+        <div style="display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;">
           <button id="continue-btn" style="
-            background: #3b82f6;
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
             color: white;
             border: none;
-            padding: 12px 24px;
-            border-radius: 8px;
+            padding: 14px 28px;
+            border-radius: 12px;
             font-size: 1rem;
+            font-weight: 600;
             cursor: pointer;
-            transition: background 0.2s;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+            min-width: 180px;
           ">
             Continuar con la siguiente
           </button>
           <button id="pause-btn" style="
-            background: #f59e0b;
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
             color: white;
             border: none;
-            padding: 12px 24px;
-            border-radius: 8px;
+            padding: 14px 28px;
+            border-radius: 12px;
             font-size: 1rem;
+            font-weight: 600;
             cursor: pointer;
-            transition: background 0.2s;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+            min-width: 180px;
           ">
             Tomar un descanso
           </button>
@@ -256,10 +384,28 @@ const CategoryQuestionsPage = ({ category, user, onBack, onStartQuiz }) => {
         resolve('pause');
       };
       
-      continueBtn.onmouseenter = () => continueBtn.style.background = '#2563eb';
-      continueBtn.onmouseleave = () => continueBtn.style.background = '#3b82f6';
-      pauseBtn.onmouseenter = () => pauseBtn.style.background = '#d97706';
-      pauseBtn.onmouseleave = () => pauseBtn.style.background = '#f59e0b';
+      // Efectos hover mejorados
+      continueBtn.onmouseenter = () => {
+        continueBtn.style.background = 'linear-gradient(135deg, #2563eb 0%, #1e40af 100%)';
+        continueBtn.style.transform = 'translateY(-2px)';
+        continueBtn.style.boxShadow = '0 6px 16px rgba(59, 130, 246, 0.4)';
+      };
+      continueBtn.onmouseleave = () => {
+        continueBtn.style.background = 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)';
+        continueBtn.style.transform = 'translateY(0)';
+        continueBtn.style.boxShadow = '0 4px 12px rgba(59, 130, 246, 0.3)';
+      };
+      
+      pauseBtn.onmouseenter = () => {
+        pauseBtn.style.background = 'linear-gradient(135deg, #d97706 0%, #b45309 100%)';
+        pauseBtn.style.transform = 'translateY(-2px)';
+        pauseBtn.style.boxShadow = '0 6px 16px rgba(245, 158, 11, 0.4)';
+      };
+      pauseBtn.onmouseleave = () => {
+        pauseBtn.style.background = 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)';
+        pauseBtn.style.transform = 'translateY(0)';
+        pauseBtn.style.boxShadow = '0 4px 12px rgba(245, 158, 11, 0.3)';
+      };
     });
     
     if (confirmed === 'continue') {
@@ -557,6 +703,35 @@ const CategoryQuestionsPage = ({ category, user, onBack, onStartQuiz }) => {
     }
   };
 
+  // Log del estado actual para debugging
+  console.log('🔍 Estado actual del componente:', {
+    quizMode,
+    quizStarted,
+    quizCompleted,
+    showExplanations,
+    explanationsEnabled,
+    loading,
+    questionsCount: questions.length,
+    currentQuestionIndex,
+    studentId,
+    showAnswerFeedback,
+    answeredQuestions
+  });
+  
+  // Log específico para debugging del feedback
+  if (questions.length > 0) {
+    console.log('🎯 Estado del feedback para la primera pregunta:', {
+      questionId: questions[0].id,
+      showAnswerFeedback: showAnswerFeedback[questions[0].id],
+      answeredQuestions: answeredQuestions[questions[0].id],
+      correctAnswer: questions[0].correct_answer
+    });
+    
+    // Log más detallado
+    console.log('🎯 showAnswerFeedback completo:', showAnswerFeedback);
+    console.log('🎯 answeredQuestions completo:', answeredQuestions);
+  }
+
   if (loading) {
     return (
       <div style={{
@@ -579,7 +754,8 @@ const CategoryQuestionsPage = ({ category, user, onBack, onStartQuiz }) => {
   }
 
   // Si estamos mostrando las explicaciones, renderizar el componente de explicaciones
-  if (showExplanations && quizCompleted && explanationsEnabled) {
+  // En modo estudio, no mostrar explicaciones automáticamente
+  if (showExplanations && quizCompleted && explanationsEnabled && quizMode) {
     return (
       <QuizExplanationsView
         category={category}
@@ -890,12 +1066,13 @@ const CategoryQuestionsPage = ({ category, user, onBack, onStartQuiz }) => {
                                 left: 0;
                                 width: 100%;
                                 height: 100%;
-                                background: rgba(0, 0, 0, 0.9);
+                                background: rgba(0, 0, 0, 0.95);
                                 display: flex;
                                 justify-content: center;
                                 align-items: center;
                                 z-index: 10000;
                                 cursor: pointer;
+                                backdrop-filter: blur(8px);
                               `;
                               
                               const img = document.createElement('img');
@@ -904,8 +1081,10 @@ const CategoryQuestionsPage = ({ category, user, onBack, onStartQuiz }) => {
                                 max-width: 90%;
                                 max-height: 90%;
                                 object-fit: contain;
-                                border-radius: 8px;
-                                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+                                border-radius: 12px;
+                                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.7);
+                                border: 2px solid rgba(255, 255, 255, 0.1);
+                                transition: transform 0.3s ease;
                               `;
                               
                               const closeBtn = document.createElement('div');
@@ -915,19 +1094,30 @@ const CategoryQuestionsPage = ({ category, user, onBack, onStartQuiz }) => {
                                 top: 20px;
                                 right: 30px;
                                 color: white;
-                                font-size: 30px;
+                                font-size: 24px;
+                                font-weight: bold;
                                 cursor: pointer;
-                                background: rgba(0, 0, 0, 0.5);
-                                width: 40px;
-                                height: 40px;
+                                background: rgba(0, 0, 0, 0.7);
+                                width: 44px;
+                                height: 44px;
                                 border-radius: 50%;
                                 display: flex;
                                 align-items: center;
                                 justify-content: center;
-                                transition: background 0.3s ease;
+                                transition: all 0.3s ease;
+                                border: 2px solid rgba(255, 255, 255, 0.2);
+                                backdrop-filter: blur(4px);
                               `;
-                              closeBtn.onmouseover = () => closeBtn.style.background = 'rgba(255, 0, 0, 0.7)';
-                              closeBtn.onmouseout = () => closeBtn.style.background = 'rgba(0, 0, 0, 0.5)';
+                              closeBtn.onmouseover = () => {
+                                closeBtn.style.background = 'rgba(239, 68, 68, 0.8)';
+                                closeBtn.style.borderColor = 'rgba(239, 68, 68, 0.6)';
+                                closeBtn.style.transform = 'scale(1.1)';
+                              };
+                              closeBtn.onmouseout = () => {
+                                closeBtn.style.background = 'rgba(0, 0, 0, 0.7)';
+                                closeBtn.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+                                closeBtn.style.transform = 'scale(1)';
+                              };
                               
                               modal.appendChild(img);
                               modal.appendChild(closeBtn);
@@ -967,15 +1157,38 @@ const CategoryQuestionsPage = ({ category, user, onBack, onStartQuiz }) => {
                         )}
 
                         {/* Pregunta */}
-                        <h4 style={{
-                          fontSize: '1.1rem',
-                          fontWeight: '600',
-                          color: safeColor('textPrimary'),
-                          margin: '0 0 20px 0',
-                          lineHeight: '1.4'
-                        }}>
-                          {question.question}
-                        </h4>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
+                          <h4 style={{
+                            fontSize: '1.1rem',
+                            fontWeight: '600',
+                            color: safeColor('textPrimary'),
+                            margin: 0,
+                            lineHeight: '1.4',
+                            flex: 1
+                          }}>
+                            {question.question}
+                          </h4>
+                          {/* Indicador de pregunta respondida en modo estudio */}
+                          {!quizMode && answeredQuestions[question.id] && (
+                            <div style={{
+                              background: showAnswerFeedback[question.id] 
+                                ? safeColor('success') + '20' 
+                                : safeColor('primary') + '20',
+                              color: showAnswerFeedback[question.id] 
+                                ? safeColor('success') 
+                                : safeColor('primary'),
+                              padding: '4px 8px',
+                              borderRadius: '6px',
+                              fontSize: '0.8rem',
+                              fontWeight: '500',
+                              border: `1px solid ${showAnswerFeedback[question.id] 
+                                ? safeColor('success') + '40' 
+                                : safeColor('primary') + '40'}`
+                            }}>
+                              {showAnswerFeedback[question.id] ? '✅ Completada' : '⏳ Respondida'}
+                            </div>
+                          )}
+                        </div>
 
 
                         {/* Opciones de respuesta */}
@@ -998,18 +1211,68 @@ const CategoryQuestionsPage = ({ category, user, onBack, onStartQuiz }) => {
                               {question.options.map((option, optIndex) => {
                                 const optionKey = String.fromCharCode(65 + optIndex);
                                 const isSelected = studentAnswers[question.id] === optionKey;
-                                const isCorrect = question.correct_answer === optionKey;
-                                const showCorrect = showResults && isCorrect;
-                                const showIncorrect = showResults && isSelected && !isCorrect;
+                                // Comparar con el texto completo de la opción, no con la letra
+                                const isCorrect = question.correct_answer === option;
+                                
+                                // En modo estudio, solo mostrar feedback después de hacer clic en "Ver explicación"
+                                // En modo quiz, mostrar feedback solo al final
+                                const showCorrect = (!quizMode && showAnswerFeedback[question.id] && isCorrect) || 
+                                                   (quizMode && showResults && isCorrect);
+                                const showIncorrect = (!quizMode && showAnswerFeedback[question.id] && isSelected && !isCorrect) || 
+                                                      (quizMode && showResults && isSelected && !isCorrect);
+                                
+                                // En modo estudio, SIEMPRE mostrar la respuesta correcta cuando se muestra el feedback
+                                const shouldShowCorrect = (!quizMode && showAnswerFeedback[question.id] && isCorrect) || 
+                                                         (quizMode && showResults && isCorrect);
+                                
+                                // FORZAR mostrar la respuesta correcta si estamos en modo estudio y se ha mostrado la explicación
+                                const forceShowCorrect = !quizMode && showAnswerFeedback[question.id] && isCorrect;
+                                
+                                // Debug logs para la primera pregunta
+                                if (question.id === questions[0]?.id) {
+                                  console.log('🎯 Debug opción', optionKey, ':', {
+                                    isSelected,
+                                    isCorrect,
+                                    showAnswerFeedback: showAnswerFeedback[question.id],
+                                    showCorrect,
+                                    shouldShowCorrect,
+                                    forceShowCorrect,
+                                    showIncorrect,
+                                    quizMode,
+                                    showResults,
+                                    questionId: question.id,
+                                    correctAnswer: question.correct_answer
+                                  });
+                                }
                                 
                                 return (
                                   <button
                                     key={optIndex}
-                                    onClick={() => !showResults && handleAnswerSelect(question.id, optionKey)}
-                                    disabled={showResults}
+                                    onClick={() => {
+                                      console.log('🖱️ Botón clickeado:', { 
+                                        questionId: question.id, 
+                                        optionKey, 
+                                        quizMode, 
+                                        answered: answeredQuestions[question.id],
+                                        showResults 
+                                      });
+                                      
+                                      // En modo estudio, solo permitir responder si no ha respondido aún
+                                      // En modo quiz, solo permitir si no se han mostrado resultados
+                                      if (!quizMode && !answeredQuestions[question.id]) {
+                                        console.log('📚 Modo estudio - permitiendo respuesta');
+                                        handleAnswerSelect(question.id, optionKey);
+                                      } else if (quizMode && !showResults) {
+                                        console.log('🎮 Modo quiz - permitiendo respuesta');
+                                        handleAnswerSelect(question.id, optionKey);
+                                      } else {
+                                        console.log('❌ Respuesta bloqueada');
+                                      }
+                                    }}
+                                    disabled={(quizMode && showResults) || (!quizMode && answeredQuestions[question.id])}
                                     style={{
                                       padding: '16px 20px',
-                                      background: showCorrect 
+                                      background: forceShowCorrect 
                                         ? safeColor('success') + '20' 
                                         : showIncorrect 
                                           ? safeColor('error') + '20'
@@ -1018,7 +1281,7 @@ const CategoryQuestionsPage = ({ category, user, onBack, onStartQuiz }) => {
                                             : safeColor('cardBg'),
                                       borderRadius: '12px',
                                       border: `2px solid ${
-                                        showCorrect 
+                                        forceShowCorrect 
                                           ? safeColor('success')
                                           : showIncorrect 
                                             ? safeColor('error')
@@ -1044,7 +1307,7 @@ const CategoryQuestionsPage = ({ category, user, onBack, onStartQuiz }) => {
                                       {optionKey}.
                                     </span>
                                     <span>{option}</span>
-                                    {showCorrect && <span style={{ color: safeColor('success'), fontSize: '1.2rem' }}>✓</span>}
+                                    {forceShowCorrect && <span style={{ color: safeColor('success'), fontSize: '1.2rem' }}>✓</span>}
                                     {showIncorrect && <span style={{ color: safeColor('error'), fontSize: '1.2rem' }}>✗</span>}
                                   </button>
                                 );
@@ -1072,9 +1335,47 @@ const CategoryQuestionsPage = ({ category, user, onBack, onStartQuiz }) => {
                           </div>
                         )}
 
+                        {/* Botón "Ver explicación" en modo estudio */}
+                        {!quizMode && answeredQuestions[question.id] && !showAnswerFeedback[question.id] && (
+                          <div style={{
+                            marginTop: '20px',
+                            textAlign: 'center'
+                          }}>
+                            <button
+                              onClick={() => handleShowExplanation(question.id)}
+                              style={{
+                                background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+                                color: 'white',
+                                border: 'none',
+                                padding: '12px 24px',
+                                borderRadius: '12px',
+                                fontSize: '1rem',
+                                fontWeight: '600',
+                                cursor: 'pointer',
+                                transition: 'all 0.3s ease',
+                                boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)'
+                              }}
+                              onMouseEnter={(e) => {
+                                e.target.style.background = 'linear-gradient(135deg, #2563eb 0%, #1e40af 100%)';
+                                e.target.style.transform = 'translateY(-2px)';
+                                e.target.style.boxShadow = '0 6px 16px rgba(59, 130, 246, 0.4)';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.target.style.background = 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)';
+                                e.target.style.transform = 'translateY(0)';
+                                e.target.style.boxShadow = '0 4px 12px rgba(59, 130, 246, 0.3)';
+                              }}
+                            >
+                              📚 Ver explicación
+                            </button>
+                          </div>
+                        )}
 
-                        {/* Explicación - Solo se muestra después de que el admin publique resultados */}
-                        {question.explanation && showResults && (
+                        {/* Explicación - Se muestra después de hacer clic en "Ver explicación" en modo estudio o al final en modo quiz */}
+                        {question.explanation && (
+                          (!quizMode && showAnswerFeedback[question.id]) || 
+                          (quizMode && showResults)
+                        ) && (
                           <div style={{
                             marginTop: '20px',
                             padding: '16px',
@@ -1097,6 +1398,42 @@ const CategoryQuestionsPage = ({ category, user, onBack, onStartQuiz }) => {
                             }}>
                               {question.explanation}
                             </p>
+                          </div>
+                        )}
+
+                        {/* Botón "Siguiente pregunta" en modo estudio después de ver explicación */}
+                        {!quizMode && showAnswerFeedback[question.id] && currentQuestionIndex < questions.length - 1 && (
+                          <div style={{
+                            marginTop: '20px',
+                            textAlign: 'center'
+                          }}>
+                            <button
+                              onClick={() => setCurrentQuestionIndex(prev => prev + 1)}
+                              style={{
+                                background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                                color: 'white',
+                                border: 'none',
+                                padding: '12px 24px',
+                                borderRadius: '12px',
+                                fontSize: '1rem',
+                                fontWeight: '600',
+                                cursor: 'pointer',
+                                transition: 'all 0.3s ease',
+                                boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)'
+                              }}
+                              onMouseEnter={(e) => {
+                                e.target.style.background = 'linear-gradient(135deg, #059669 0%, #047857 100%)';
+                                e.target.style.transform = 'translateY(-2px)';
+                                e.target.style.boxShadow = '0 6px 16px rgba(16, 185, 129, 0.4)';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.target.style.background = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
+                                e.target.style.transform = 'translateY(0)';
+                                e.target.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.3)';
+                              }}
+                            >
+                              ➡️ Siguiente pregunta
+                            </button>
                           </div>
                         )}
                       </div>
@@ -1291,17 +1628,6 @@ const CategoryQuestionsPage = ({ category, user, onBack, onStartQuiz }) => {
                 gap: '16px',
                 flexWrap: 'wrap'
               }}>
-                {explanationsEnabled && (
-                  <CustomButton
-                    text="Ver Explicaciones"
-                    onClick={() => setShowExplanations(true)}
-                    variant="success"
-                    style={{
-                      fontSize: '1rem',
-                      padding: '12px 24px'
-                    }}
-                  />
-                )}
                 <CustomButton
                   text="Volver al Dashboard"
                   onClick={onBack}

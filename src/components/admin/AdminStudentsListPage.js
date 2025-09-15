@@ -4,6 +4,9 @@ import StudentsService from '../../services/StudentsService';
 
 const AdminStudentsListPage = ({ onNavigate }) => {
   const [students, setStudents] = useState([]);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  const [total, setTotal] = useState(0);
   const [filteredStudents, setFilteredStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -14,7 +17,7 @@ const AdminStudentsListPage = ({ onNavigate }) => {
 
   useEffect(() => {
     loadStudents();
-  }, []);
+  }, [page, pageSize]);
 
   useEffect(() => {
     filterAndSortStudents();
@@ -23,9 +26,25 @@ const AdminStudentsListPage = ({ onNavigate }) => {
   const loadStudents = async () => {
     try {
       setLoading(true);
-      const studentsData = await StudentsService.getAllStudents();
-      setStudents(studentsData);
-      console.log('✅ Estudiantes cargados:', studentsData.length);
+      const orderBy = sortBy === 'email' ? 'email' : 'full_name';
+      const ascending = sortOrder === 'asc';
+      const result = await StudentsService.getAllStudents({
+        page,
+        pageSize,
+        searchText: searchTerm,
+        orderBy,
+        ascending
+      });
+
+      if (Array.isArray(result)) {
+        setStudents(result);
+        setTotal(result.length);
+        console.log('✅ Estudiantes cargados:', result.length);
+      } else {
+        setStudents(result.data || []);
+        setTotal(result.total || 0);
+        console.log('✅ Estudiantes cargados:', (result.data || []).length, 'de', result.total || 0);
+      }
     } catch (error) {
       console.error('❌ Error cargando estudiantes:', error);
     } finally {

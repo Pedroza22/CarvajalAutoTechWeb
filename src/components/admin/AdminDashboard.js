@@ -3,7 +3,7 @@ import { getColor } from '../../utils/constants';
 import AdminStudentsListPage from './AdminStudentsListPage';
 import AdminStudentDetailPage from './AdminStudentDetailPage';
 import AdminCategoriesPage from './AdminCategoriesPage';
-import AdminQuestionsPage from './AdminQuestionsPage';
+import AdminQuestionsListPage from './AdminQuestionsListPage';
 import AdminStatisticsPage from './AdminStatisticsPage';
 
 const AdminDashboard = ({ onLogout }) => {
@@ -36,7 +36,7 @@ const AdminDashboard = ({ onLogout }) => {
       case 'categories':
         return <AdminCategoriesPage onNavigate={handleNavigate} />;
       case 'questions':
-        return <AdminQuestionsPage onNavigate={handleNavigate} />;
+        return <AdminQuestionsListPage onNavigate={handleNavigate} />;
       case 'statistics':
         return <AdminStatisticsPage onNavigate={handleNavigate} />;
       default:

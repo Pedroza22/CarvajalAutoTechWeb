@@ -14,7 +14,7 @@ class QuestionsService {
             name
           )
         `)
-        .order('created_at', { ascending: false });
+        .order('id', { ascending: true });
 
       if (error) {
         console.error('❌ Error obteniendo preguntas:', error);
@@ -25,6 +25,31 @@ class QuestionsService {
       return data || [];
     } catch (error) {
       console.error('❌ Error en getQuestions:', error);
+      throw error;
+    }
+  }
+
+  // Obtener preguntas paginadas (opcional por categoría)
+  async getQuestionsPaged({ page = 1, pageSize = 50, categoryId = null } = {}) {
+    try {
+      const from = (page - 1) * pageSize;
+      const to = from + pageSize - 1;
+
+      let base = supabase
+        .from('questions')
+        .select('id, question, options, correct_answer, category_id, type, time_limit, explanation, image_url', { count: 'exact' })
+        .order('id', { ascending: true });
+
+      if (categoryId) {
+        base = base.eq('category_id', categoryId);
+      }
+
+      const { data, error, count } = await base.range(from, to);
+      if (error) throw error;
+
+      return { data: data || [], total: count || 0, page, pageSize };
+    } catch (error) {
+      console.error('❌ Error en getQuestionsPaged:', error);
       throw error;
     }
   }
@@ -206,7 +231,7 @@ class QuestionsService {
           )
         `)
         .eq('category_id', categoryId)
-        .order('created_at', { ascending: false });
+        .order('id', { ascending: true });
 
       if (error) {
         console.error('❌ Error obteniendo preguntas por categoría:', error);

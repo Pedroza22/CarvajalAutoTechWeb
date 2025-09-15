@@ -17,16 +17,14 @@ const AdminStatisticsPage = ({ onNavigate }) => {
     topStudents: []
   });
   const [loading, setLoading] = useState(true);
-  const [selectedPeriod, setSelectedPeriod] = useState('30d');
-
   useEffect(() => {
     loadStatistics();
-  }, [selectedPeriod]);
+  }, []);
 
   const loadStatistics = async () => {
     try {
       setLoading(true);
-      const stats = await StatisticsService.getAdminStatistics(selectedPeriod);
+      const stats = await StatisticsService.getAdminStatistics();
       setStatistics(stats);
       console.log('✅ Estadísticas cargadas:', stats);
       console.log('📊 Top estudiantes recibidos:', stats.topStudents);
@@ -132,40 +130,51 @@ const AdminStatisticsPage = ({ onNavigate }) => {
         alignItems: 'center',
         marginBottom: '24px'
       }}>
-        <div>
-          <h1 style={{
-            fontSize: '1.8rem',
-            fontWeight: '700',
-            color: safeColor('textPrimary'),
-            margin: '0 0 8px 0'
-          }}>
-            Estadísticas del Sistema
-          </h1>
-          <p style={{
-            fontSize: '1rem',
-            color: safeColor('textMuted'),
-            margin: 0
-          }}>
-            Análisis y métricas del rendimiento
-          </p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <button
+            onClick={() => onNavigate('admin-home')}
+            style={{
+              background: 'transparent',
+              color: safeColor('textMuted'),
+              border: 'none',
+              fontSize: '0.9rem',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 10px',
+              borderRadius: '6px',
+              transition: 'all 0.2s'
+            }}
+            onMouseEnter={(e) => {
+              e.target.style.background = safeColor('primary') + '20';
+              e.target.style.color = safeColor('primary');
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.background = 'transparent';
+              e.target.style.color = safeColor('textMuted');
+            }}
+          >
+            ← Volver
+          </button>
+          <div>
+            <h1 style={{
+              fontSize: '1.8rem',
+              fontWeight: '700',
+              color: safeColor('textPrimary'),
+              margin: '0 0 8px 0'
+            }}>
+              Estadísticas del Sistema
+            </h1>
+            <p style={{
+              fontSize: '1rem',
+              color: safeColor('textMuted'),
+              margin: 0
+            }}>
+              Análisis y métricas del rendimiento
+            </p>
+          </div>
         </div>
-        <select
-          value={selectedPeriod}
-          onChange={(e) => setSelectedPeriod(e.target.value)}
-          style={{
-            padding: '12px',
-            borderRadius: '8px',
-            border: `1px solid ${safeColor('border')}`,
-            background: safeColor('cardBg'),
-            color: safeColor('textPrimary'),
-            fontSize: '1rem'
-          }}
-        >
-          <option value="7d">Últimos 7 días</option>
-          <option value="30d">Últimos 30 días</option>
-          <option value="90d">Últimos 90 días</option>
-          <option value="1y">Último año</option>
-        </select>
       </div>
 
       {/* Card de Estudiantes */}

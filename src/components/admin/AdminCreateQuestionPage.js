@@ -14,6 +14,7 @@ const AdminCreateQuestionPage = ({ onNavigate, questionData = null }) => {
     question: '',
     type: 'multiple_choice',
     categoryId: '',
+    moduleId: 1,
     options: ['', ''],
     correctAnswer: '',
     timeLimit: '',
@@ -22,6 +23,8 @@ const AdminCreateQuestionPage = ({ onNavigate, questionData = null }) => {
   });
   const [selectedFile, setSelectedFile] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [showNewModuleForm, setShowNewModuleForm] = useState(false);
+  const [newModuleName, setNewModuleName] = useState('');
   const { modalState, showModal, hideModal, showSuccess, showError } = useModal();
 
   const isEditing = !!questionData;
@@ -199,7 +202,7 @@ const AdminCreateQuestionPage = ({ onNavigate, questionData = null }) => {
       return;
     }
     
-    if (formData.type !== 'free_text' && !formData.correctAnswer) {
+    if (!formData.correctAnswer) {
       showError('Campo Requerido', 'Selecciona la respuesta correcta');
       return;
     }
@@ -227,8 +230,7 @@ const AdminCreateQuestionPage = ({ onNavigate, questionData = null }) => {
         categoryId: formData.categoryId,
         type: formData.type,
         question: formData.question.trim(),
-        options: formData.type === 'multiple_choice' ? formData.options.filter(opt => opt.trim()) : 
-                 formData.type === 'true_false' ? ['Verdadero', 'Falso'] : [],
+        options: formData.options.filter(opt => opt.trim()),
         correctAnswer: formData.correctAnswer,
         timeLimit: formData.timeLimit ? parseInt(formData.timeLimit) : null,
         explanation: formData.explanation.trim() || null,
@@ -328,7 +330,7 @@ const AdminCreateQuestionPage = ({ onNavigate, questionData = null }) => {
           padding: '24px',
           border: `1px solid ${safeColor('border')}`
         }}>
-          {/* Tipo de pregunta */}
+          {/* Tipo de pregunta - Solo Opción Múltiple */}
           <div style={{ marginBottom: '24px' }}>
             <label style={{
               display: 'block',
@@ -340,44 +342,146 @@ const AdminCreateQuestionPage = ({ onNavigate, questionData = null }) => {
               Tipo de Pregunta
             </label>
             <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-              gap: '12px'
+              padding: '16px',
+              borderRadius: '12px',
+              border: `2px solid ${safeColor('primary')}`,
+              background: `${safeColor('primary')}20`,
+              color: safeColor('primary'),
+              fontSize: '0.9rem',
+              fontWeight: '600',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
             }}>
-              {[
-                { value: 'multiple_choice', label: 'Opción Múltiple', icon: '🔘' },
-                { value: 'true_false', label: 'Verdadero/Falso', icon: '☑️' },
-                { value: 'free_text', label: 'Texto Libre', icon: '📝' }
-              ].map(type => (
-                <button
-                  key={type.value}
-                  type="button"
-                  onClick={() => {
-                    setFormData(prev => ({ 
-                      ...prev, 
-                      type: type.value,
-                      correctAnswer: '',
-                      options: type.value === 'true_false' ? ['Verdadero', 'Falso'] : ['', '']
-                    }));
-                  }}
-                  style={{
-                    padding: '16px',
-                    borderRadius: '12px',
-                    border: `2px solid ${formData.type === type.value ? safeColor('primary') : safeColor('border')}`,
-                    background: formData.type === type.value ? `${safeColor('primary')}20` : 'transparent',
-                    color: safeColor('textPrimary'),
-                    cursor: 'pointer',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    gap: '8px'
-                  }}
-                >
-                  <span style={{ fontSize: '24px' }}>{type.icon}</span>
-                  <span style={{ fontSize: '0.9rem', fontWeight: '600' }}>{type.label}</span>
-                </button>
-              ))}
+              <span style={{ fontSize: '24px' }}>🔘</span>
+              Opción Múltiple
             </div>
+          </div>
+
+          {/* Módulo */}
+          <div style={{ marginBottom: '24px' }}>
+            <label style={{
+              display: 'block',
+              fontSize: '1rem',
+              fontWeight: '600',
+              color: safeColor('textPrimary'),
+              marginBottom: '8px'
+            }}>
+              Módulo
+            </label>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <select
+                value={formData.moduleId}
+                onChange={(e) => handleInputChange('moduleId', parseInt(e.target.value))}
+                style={{
+                  flex: 1,
+                  padding: '12px',
+                  borderRadius: '8px',
+                  border: `1px solid ${safeColor('border')}`,
+                  background: safeColor('dark'),
+                  color: safeColor('textPrimary'),
+                  fontSize: '1rem'
+                }}
+              >
+                <option value={1}>Módulo 1</option>
+                <option value={2}>Módulo 2</option>
+                <option value={3}>Módulo 3</option>
+                <option value={4}>Módulo 4</option>
+                <option value={5}>Módulo 5</option>
+              </select>
+              <button
+                type="button"
+                onClick={() => setShowNewModuleForm(!showNewModuleForm)}
+                style={{
+                  padding: '12px 16px',
+                  borderRadius: '8px',
+                  border: `1px solid ${safeColor('primary')}`,
+                  background: 'transparent',
+                  color: safeColor('primary'),
+                  fontSize: '0.9rem',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                + Nuevo
+              </button>
+            </div>
+            {/* Mostrar categoría del módulo */}
+            <div style={{
+              marginTop: '8px',
+              padding: '8px 12px',
+              background: safeColor('primary') + '15',
+              borderRadius: '6px',
+              border: `1px solid ${safeColor('primary')}30`,
+              fontSize: '0.9rem',
+              color: safeColor('primary'),
+              fontWeight: '500'
+            }}>
+              📂 Categoría: {categories.find(cat => cat.id === formData.categoryId)?.name || 'Selecciona una categoría'}
+            </div>
+            {showNewModuleForm && (
+              <div style={{ marginTop: '12px', padding: '12px', background: safeColor('cardBg'), borderRadius: '8px', border: `1px solid ${safeColor('border')}` }}>
+                <input
+                  type="text"
+                  placeholder="Nombre del nuevo módulo"
+                  value={newModuleName}
+                  onChange={(e) => setNewModuleName(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px',
+                    borderRadius: '6px',
+                    border: `1px solid ${safeColor('border')}`,
+                    background: safeColor('dark'),
+                    color: safeColor('textPrimary'),
+                    fontSize: '0.9rem',
+                    marginBottom: '8px'
+                  }}
+                />
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (newModuleName.trim()) {
+                        const newModuleId = Math.max(...Array.from({ length: 5 }, (_, i) => i + 1)) + 1;
+                        handleInputChange('moduleId', newModuleId);
+                        setShowNewModuleForm(false);
+                        setNewModuleName('');
+                        showSuccess('Módulo Creado', `Módulo "${newModuleName}" creado exitosamente`);
+                      }
+                    }}
+                    style={{
+                      padding: '6px 12px',
+                      borderRadius: '6px',
+                      border: 'none',
+                      background: safeColor('success'),
+                      color: 'white',
+                      fontSize: '0.8rem',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Crear
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowNewModuleForm(false);
+                      setNewModuleName('');
+                    }}
+                    style={{
+                      padding: '6px 12px',
+                      borderRadius: '6px',
+                      border: `1px solid ${safeColor('border')}`,
+                      background: 'transparent',
+                      color: safeColor('textPrimary'),
+                      fontSize: '0.8rem',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Categoría */}
@@ -443,9 +547,8 @@ const AdminCreateQuestionPage = ({ onNavigate, questionData = null }) => {
             />
           </div>
 
-          {/* Opciones (solo para opción múltiple) */}
-          {formData.type === 'multiple_choice' && (
-            <div style={{ marginBottom: '24px' }}>
+          {/* Opciones */}
+          <div style={{ marginBottom: '24px' }}>
               <div style={{
                 display: 'flex',
                 justifyContent: 'space-between',
@@ -526,75 +629,7 @@ const AdminCreateQuestionPage = ({ onNavigate, questionData = null }) => {
                 </div>
               ))}
             </div>
-          )}
 
-          {/* Respuesta correcta para verdadero/falso */}
-          {formData.type === 'true_false' && (
-            <div style={{ marginBottom: '24px' }}>
-              <label style={{
-                display: 'block',
-                fontSize: '1rem',
-                fontWeight: '600',
-                color: safeColor('textPrimary'),
-                marginBottom: '12px'
-              }}>
-                Respuesta Correcta *
-              </label>
-              <div style={{ display: 'flex', gap: '12px' }}>
-                {['Verdadero', 'Falso'].map(option => (
-                  <button
-                    key={option}
-                    type="button"
-                    onClick={() => handleInputChange('correctAnswer', option)}
-                    style={{
-                      flex: 1,
-                      padding: '12px',
-                      borderRadius: '8px',
-                      border: `2px solid ${formData.correctAnswer === option ? safeColor('success') : safeColor('border')}`,
-                      background: formData.correctAnswer === option ? `${safeColor('success')}20` : 'transparent',
-                      color: safeColor('textPrimary'),
-                      cursor: 'pointer',
-                      fontSize: '1rem',
-                      fontWeight: '600'
-                    }}
-                  >
-                    {option}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Respuesta esperada para texto libre */}
-          {formData.type === 'free_text' && (
-            <div style={{ marginBottom: '24px' }}>
-              <label style={{
-                display: 'block',
-                fontSize: '1rem',
-                fontWeight: '600',
-                color: safeColor('textPrimary'),
-                marginBottom: '8px'
-              }}>
-                Respuesta Esperada *
-              </label>
-              <input
-                type="text"
-                value={formData.correctAnswer}
-                onChange={(e) => handleInputChange('correctAnswer', e.target.value)}
-                placeholder="Escribe la respuesta correcta..."
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  borderRadius: '8px',
-                  border: `1px solid ${safeColor('border')}`,
-                  background: safeColor('dark'),
-                  color: safeColor('textPrimary'),
-                  fontSize: '1rem'
-                }}
-                required
-              />
-            </div>
-          )}
 
           {/* Límite de tiempo */}
           <div style={{ marginBottom: '24px' }}>

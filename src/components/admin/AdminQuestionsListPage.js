@@ -8,28 +8,45 @@ import CustomModal from '../CustomModal';
 
 const AdminQuestionsListPage = ({ onNavigate }) => {
   const [questions, setQuestions] = useState([]);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
+  const [total, setTotal] = useState(0);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('');
   const [searchText, setSearchText] = useState('');
   const { modalState, showModal, hideModal, showSuccess, showError, showConfirm } = useModal();
+  const [selectedQuestion, setSelectedQuestion] = useState(null);
+  const [showModules, setShowModules] = useState(true);
+  const [modulesCount, setModulesCount] = useState(1);
 
   useEffect(() => {
     loadData();
   }, []);
 
+  // Asegurar que siempre inicie mostrando módulos
   useEffect(() => {
-    loadQuestions();
-  }, [selectedCategory]);
+    setShowModules(true);
+  }, []);
+
+  useEffect(() => {
+    if (!showModules) {
+      loadQuestions();
+    }
+  }, [selectedCategory, page, pageSize, showModules]);
 
   const loadData = async () => {
     setLoading(true);
     try {
-      const [questionsData, categoriesData] = await Promise.all([
-        QuestionsService.getQuestions(),
+      const [paged, categoriesData] = await Promise.all([
+        QuestionsService.getQuestionsPaged({ page, pageSize }),
         CategoriesService.getAllCategories()
       ]);
-      setQuestions(questionsData || []);
+      const qData = Array.isArray(paged) ? paged : paged.data;
+      setQuestions(qData || []);
+      const totalCount = Array.isArray(paged) ? qData.length : (paged.total || 0);
+      setTotal(totalCount);
+      setModulesCount(Math.max(1, Math.ceil(totalCount / pageSize)));
       setCategories(categoriesData || []);
     } catch (error) {
       console.error('Error cargando datos:', error);
@@ -43,13 +60,15 @@ const AdminQuestionsListPage = ({ onNavigate }) => {
   const loadQuestions = async () => {
     setLoading(true);
     try {
-      let questionsData;
       if (selectedCategory) {
-        questionsData = await QuestionsService.getQuestionsByCategory(selectedCategory);
+        const byCat = await QuestionsService.getQuestionsByCategory(selectedCategory);
+        setQuestions(byCat || []);
+        setTotal((byCat || []).length);
       } else {
-        questionsData = await QuestionsService.getQuestions();
+        const paged = await QuestionsService.getQuestionsPaged({ page, pageSize });
+        setQuestions(paged.data || []);
+        setTotal(paged.total || 0);
       }
-      setQuestions(questionsData || []);
     } catch (error) {
       console.error('Error cargando preguntas:', error);
       setQuestions([]);
@@ -92,9 +111,11 @@ const AdminQuestionsListPage = ({ onNavigate }) => {
     }
   };
 
-  const filteredQuestions = questions.filter(question => 
-    question.question.toLowerCase().includes(searchText.toLowerCase())
-  );
+  const filteredQuestions = questions
+    .filter(q => q.question.toLowerCase().includes(searchText.toLowerCase()))
+    .sort((a, b) => (a.id || 0) - (b.id || 0));
+
+  const totalPages = Math.max(1, Math.ceil((total || 0) / pageSize));
 
   const getCategoryName = (categoryId) => {
     const category = categories.find(cat => cat.id === categoryId);
@@ -112,9 +133,11 @@ const AdminQuestionsListPage = ({ onNavigate }) => {
   };
 
   const pageStyle = {
-    padding: '16px',
+    padding: '20px',
     background: AppTheme.primaryBlack,
     minHeight: '100vh',
+    maxWidth: '1400px',
+    margin: '0 auto',
   };
 
   const headerStyle = {
@@ -164,8 +187,8 @@ const AdminQuestionsListPage = ({ onNavigate }) => {
   };
 
   const questionsListStyle = {
-    display: 'flex',
-    flexDirection: 'column',
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
     gap: '16px',
   };
 
@@ -241,25 +264,23 @@ const AdminQuestionsListPage = ({ onNavigate }) => {
 
   const questionCardStyle = {
     ...AppTheme.card(),
-    padding: '20px',
+    padding: '14px 16px',
+    display: 'block',
+    overflow: 'hidden'
   };
 
   const questionHeaderStyle = {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: '12px',
-    gap: '12px',
-    minWidth: 0
+    display: 'block',
+    marginBottom: '6px'
   };
 
   const questionTextStyle = {
     color: AppTheme.white,
-    fontSize: '16px',
-    fontWeight: '500',
-    lineHeight: '1.4',
-    flex: 1,
-    marginRight: '16px',
+    fontSize: '15px',
+    fontWeight: '700',
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis'
   };
 
   const questionMetaStyle = {
@@ -330,6 +351,22 @@ const AdminQuestionsListPage = ({ onNavigate }) => {
     fontSize: '16px',
   };
 
+  // Formateador de texto para mejorar legibilidad (quiebres de línea después de puntos/bullets)
+  const formatReadableText = (text = '') => {
+    try {
+      if (!text || typeof text !== 'string') return '';
+      // Reemplazar bullets de tipo '• ' por saltos de línea antes
+      let t = text.replace(/\s*•\s*/g, '\n• ');
+      // Asegurar salto de línea después de punto seguido cuando hay viñetas largas
+      t = t.replace(/\.\s+/g, '.\n');
+      // Compactar múltiples saltos
+      t = t.replace(/\n{3,}/g, '\n\n');
+      return t.trim();
+    } catch (_) {
+      return String(text || '');
+    }
+  };
+
   const loadingStyle = {
     textAlign: 'center',
     padding: '48px 16px',
@@ -383,8 +420,61 @@ const AdminQuestionsListPage = ({ onNavigate }) => {
         />
       </div>
 
-      {/* Lista de preguntas */}
-      {loading ? (
+      {/* Selector de módulos */}
+      {showModules ? (
+        <div>
+          {loading ? (
+            <div style={loadingStyle}>
+              Cargando módulos...
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
+              {Array.from({ length: modulesCount }).map((_, i) => {
+                // Obtener la categoría de las preguntas de este módulo
+                const moduleStart = (i * pageSize) + 1;
+                const moduleEnd = Math.min((i + 1) * pageSize, total || (i + 1) * pageSize);
+                const moduleQuestions = questions.filter(q => {
+                  const questionNumber = questions.indexOf(q) + 1;
+                  return questionNumber >= moduleStart && questionNumber <= moduleEnd;
+                });
+                
+                // Obtener la categoría más común en este módulo
+                const categoryCounts = {};
+                moduleQuestions.forEach(q => {
+                  const categoryName = getCategoryName(q.category_id);
+                  categoryCounts[categoryName] = (categoryCounts[categoryName] || 0) + 1;
+                });
+                const mostCommonCategory = Object.keys(categoryCounts).reduce((a, b) => 
+                  categoryCounts[a] > categoryCounts[b] ? a : b, 'Sin categoría'
+                );
+                
+                return (
+                  <div key={i} style={{ ...questionCardStyle, cursor: 'pointer' }} onClick={() => { setPage(i + 1); setShowModules(false); }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                      <div style={questionTextStyle}>{`Módulo ${i + 1}`}</div>
+                      <div style={{ 
+                        color: AppTheme.primary, 
+                        fontSize: 11, 
+                        fontWeight: '500',
+                        background: AppTheme.primary + '15',
+                        padding: '4px 8px',
+                        borderRadius: '4px',
+                        border: `1px solid ${AppTheme.primary}30`
+                      }}>
+                        📂 {mostCommonCategory}
+                      </div>
+                    </div>
+                    <div style={{ color: AppTheme.greyLight, fontSize: 12 }}>{`Preguntas ${moduleStart} – ${moduleEnd}`}</div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      ) : (
+        <>
+          {/* Lista de preguntas */}
+          {loading ? (
         <div style={loadingStyle}>
           Cargando preguntas...
         </div>
@@ -394,109 +484,71 @@ const AdminQuestionsListPage = ({ onNavigate }) => {
         </div>
       ) : (
         <div style={{ ...questionsListStyle, ...responsiveStyles.questionsList }}>
-          {filteredQuestions.map((question) => (
-            <div key={question.id} style={{ ...questionCardStyle, ...responsiveStyles.questionCard }}>
-              <div style={{ ...questionHeaderStyle, ...responsiveStyles.questionHeader }}>
-                <div style={{ ...questionTextStyle, ...responsiveStyles.questionTitle }}>
-                  {question.question}
-                </div>
-                <div style={{ ...questionMetaStyle, ...responsiveStyles.questionMeta }}>
-                  <div style={categoryTagStyle}>
-                    {getCategoryName(question.category_id)}
-                  </div>
-                  <div style={typeTagStyle}>
-                    {question.type === 'multiple_choice' ? 'Opción múltiple' :
-                     question.type === 'true_false' ? 'Verdadero/Falso' :
-                     question.type === 'text' ? 'Texto libre' : question.type}
-                  </div>
-                  <div style={dateStyle}>
-                    {formatDate(question.created_at)}
-                  </div>
-                </div>
+          {/* Controles de paginación */}
+          {!selectedCategory && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', color: AppTheme.greyLight }}>
+              <div>
+                <button onClick={() => setShowModules(true)} style={{ marginRight: 8, padding: '6px 10px', borderRadius: 6, border: `1px solid ${AppTheme.greyDark}`, background: AppTheme.lightBlack, color: AppTheme.white, cursor: 'pointer' }}>← Módulos</button>
+                Módulo {page} de {totalPages} • {total} preguntas totales
               </div>
-              
-              {question.options && question.options.length > 0 && (
-                <div style={optionsStyle}>
-                  <div style={{ color: AppTheme.white, fontSize: '14px', fontWeight: '600', marginBottom: '8px' }}>
-                    Opciones:
-                  </div>
-                  {question.options.map((option, index) => (
-                    <div
-                      key={index}
-                      style={option === question.correct_answer ? correctOptionStyle : optionStyle}
-                    >
-                      {option === question.correct_answer ? '✓ ' : '• '}{option}
-                    </div>
-                  ))}
-                </div>
-              )}
-              
-              {question.explanation && (
-                <div style={{ marginTop: '12px', padding: '12px', background: AppTheme.info + '20', borderRadius: AppTheme.borderRadius.small }}>
-                  <div style={{ color: AppTheme.info, fontSize: '14px', fontWeight: '600', marginBottom: '4px' }}>
-                    Explicación:
-                  </div>
-                  <div style={{ color: AppTheme.white, fontSize: '14px' }}>
-                    {question.explanation}
-                  </div>
-                </div>
-              )}
-
-              {/* Botones de acción */}
-              <div style={{
-                display: 'flex',
-                gap: '8px',
-                marginTop: '16px',
-                justifyContent: 'flex-end'
-              }}>
+              <div style={{ display: 'flex', gap: '8px' }}>
                 <button
-                  onClick={() => handleEditQuestion(question)}
-                  style={{
-                    background: AppTheme.primary,
-                    color: AppTheme.white,
-                    border: 'none',
-                    borderRadius: AppTheme.borderRadius.small,
-                    padding: '8px 16px',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    cursor: 'pointer',
-                    transition: 'background-color 0.2s'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.target.style.background = AppTheme.primaryDark;
-                  }}
-                  onMouseLeave={(e) => {
-                    e.target.style.background = AppTheme.primary;
-                  }}
+                  onClick={() => setPage(Math.max(1, page - 1))}
+                  disabled={page <= 1}
+                  style={{ padding: '6px 10px', borderRadius: 6, border: `1px solid ${AppTheme.greyDark}`, background: AppTheme.lightBlack, color: AppTheme.white, cursor: page <= 1 ? 'not-allowed' : 'pointer' }}
                 >
-                  ✏️ Editar
+                  ← Anterior
                 </button>
                 <button
-                  onClick={() => handleDeleteQuestion(question.id)}
-                  style={{
-                    background: AppTheme.danger,
-                    color: AppTheme.white,
-                    border: 'none',
-                    borderRadius: AppTheme.borderRadius.small,
-                    padding: '8px 16px',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    cursor: 'pointer',
-                    transition: 'background-color 0.2s'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.target.style.background = AppTheme.dangerDark;
-                  }}
-                  onMouseLeave={(e) => {
-                    e.target.style.background = AppTheme.danger;
-                  }}
+                  onClick={() => setPage(Math.min(totalPages, page + 1))}
+                  disabled={page >= totalPages}
+                  style={{ padding: '6px 10px', borderRadius: 6, border: `1px solid ${AppTheme.greyDark}`, background: AppTheme.lightBlack, color: AppTheme.white, cursor: page >= totalPages ? 'not-allowed' : 'pointer' }}
                 >
-                  🗑️ Eliminar
+                  Siguiente →
                 </button>
               </div>
             </div>
+          )}
+
+          {filteredQuestions.map((question, idx) => (
+            <div
+              key={question.id}
+              style={{ ...questionCardStyle, ...responsiveStyles.questionCard, cursor: 'pointer' }}
+              onClick={() => setSelectedQuestion(question)}
+            >
+              <div style={questionHeaderStyle}>
+                <div style={questionTextStyle}>{!selectedCategory ? `Pregunta ${((page - 1) * pageSize) + idx + 1}` : `Pregunta ${idx + 1}`}</div>
+                <div style={{ color: AppTheme.greyLight, fontSize: 12, marginTop: 4 }}>Categoría: {getCategoryName(question.category_id)}</div>
+              </div>
+            </div>
           ))}
+          {/* Controles de paginación (abajo) */}
+          {!selectedCategory && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px', color: AppTheme.greyLight }}>
+              <div>
+                Módulo {page} de {totalPages}
+              </div>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  onClick={() => setPage(Math.max(1, page - 1))}
+                  disabled={page <= 1}
+                  style={{ padding: '6px 10px', borderRadius: 6, border: `1px solid ${AppTheme.greyDark}`, background: AppTheme.lightBlack, color: AppTheme.white, cursor: page <= 1 ? 'not-allowed' : 'pointer' }}
+                >
+                  ← Anterior
+                </button>
+                <button
+                  onClick={() => setPage(Math.min(totalPages, page + 1))}
+                  disabled={page >= totalPages}
+                  style={{ padding: '6px 10px', borderRadius: 6, border: `1px solid ${AppTheme.greyDark}`, background: AppTheme.lightBlack, color: AppTheme.white, cursor: page >= totalPages ? 'not-allowed' : 'pointer' }}
+                >
+                  Siguiente →
+                </button>
+              </div>
+            </div>
+          )}
         </div>
+      )}
+        </>
       )}
       
       {/* Modal personalizado */}
@@ -509,6 +561,43 @@ const AdminQuestionsListPage = ({ onNavigate }) => {
         buttons={modalState.buttons}
         showCloseButton={modalState.showCloseButton}
       />
+
+      {/* Panel de detalle de pregunta tipo modal simple */}
+      {selectedQuestion && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div style={{ background: AppTheme.lightBlack, border: `1px solid ${AppTheme.greyDark}`, borderRadius: 12, width: 'min(900px, 92vw)', maxHeight: '90vh', overflow: 'auto', padding: 20 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <h2 style={{ color: AppTheme.white, margin: 0, fontSize: 18 }}>Detalle de la pregunta</h2>
+              <button onClick={() => setSelectedQuestion(null)} style={{ background: 'transparent', color: AppTheme.white, border: `1px solid ${AppTheme.greyDark}`, borderRadius: 8, padding: '6px 10px', cursor: 'pointer' }}>Cerrar</button>
+            </div>
+            <div style={{ color: AppTheme.white, fontSize: 16, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+              {formatReadableText(selectedQuestion.question)}
+            </div>
+            {selectedQuestion.options?.length > 0 && (
+              <div style={optionsStyle}>
+                <div style={{ color: AppTheme.white, fontSize: 14, fontWeight: 600, marginBottom: 8 }}>Opciones</div>
+                {selectedQuestion.options.map((opt, i) => (
+                  <div key={i} style={opt === selectedQuestion.correct_answer ? correctOptionStyle : optionStyle}>
+                    {opt === selectedQuestion.correct_answer ? '✓ ' : '• '}{opt}
+                  </div>
+                ))}
+              </div>
+            )}
+            {selectedQuestion.explanation && (
+              <div style={{ marginTop: 12, padding: 12, background: AppTheme.info + '20', borderRadius: AppTheme.borderRadius.small }}>
+                <div style={{ color: AppTheme.info, fontSize: 14, fontWeight: 600, marginBottom: 4 }}>Explicación</div>
+                <div style={{ color: AppTheme.white, fontSize: 14, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                  {formatReadableText(selectedQuestion.explanation)}
+                </div>
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 16 }}>
+              <button onClick={() => { const q = selectedQuestion; setSelectedQuestion(null); handleEditQuestion(q); }} style={{ background: AppTheme.primary, color: '#fff', border: 'none', borderRadius: 8, padding: '8px 16px', cursor: 'pointer' }}>✏️ Editar</button>
+              <button onClick={() => { const id = selectedQuestion.id; setSelectedQuestion(null); handleDeleteQuestion(id); }} style={{ background: AppTheme.danger, color: '#fff', border: 'none', borderRadius: 8, padding: '8px 16px', cursor: 'pointer' }}>🗑️ Eliminar</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
