@@ -256,7 +256,7 @@ class StudentCategoriesService {
   /**
    * Guarda las respuestas del estudiante para un quiz
    */
-  async saveStudentAnswers(studentId, categoryId, answers, totalTimeMinutes = null) {
+  async saveStudentAnswers(studentId, categoryId, answers, totalTimeMinutes = null, quizMode = true) {
     try {
       console.log('💾 Guardando respuestas del estudiante:', studentId, 'para categoría:', categoryId);
       
@@ -307,7 +307,9 @@ class StudentCategoriesService {
           answer: answer || 'NO_ANSWER',
           is_correct: isCorrect,
           answered_at: new Date().toISOString(),
-          time_spent: null // No guardamos tiempo por pregunta individual por ahora
+          time_spent: null, // No guardamos tiempo por pregunta individual por ahora
+          category_id: categoryId, // Agregar category_id
+          quiz_mode: quizMode // Agregar quiz_mode
         };
       });
 

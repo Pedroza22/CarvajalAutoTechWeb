@@ -1200,60 +1200,24 @@ const AdminStudentDetailPage = ({ onNavigate, student }) => {
                       >
                         {/* Header de la pregunta */}
                         <div style={{
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'flex-start',
                           marginBottom: '16px'
                         }}>
-                          <div style={{ flex: 1 }}>
-                            <div style={{
-                              fontSize: '0.9rem',
-                              color: safeColor('textMuted'),
-                              marginBottom: '8px'
-                            }}>
-                              Pregunta {index + 1}
-                            </div>
-                            <h4 style={{
-                              fontSize: '1.1rem',
-                              fontWeight: '600',
-                              color: safeColor('textPrimary'),
-                              margin: 0,
-                              lineHeight: '1.4'
-                            }}>
-                              {question.question}
-                            </h4>
-                          </div>
-                          
                           <div style={{
-                            marginLeft: '16px',
-                            textAlign: 'right'
+                            fontSize: '0.9rem',
+                            color: safeColor('textMuted'),
+                            marginBottom: '8px'
                           }}>
-                            {question.isCorrect ? (
-                              <span style={{
-                                background: safeColor('success') + '20',
-                                color: safeColor('success'),
-                                padding: '6px 12px',
-                                borderRadius: '8px',
-                                fontSize: '0.8rem',
-                                fontWeight: '600',
-                                border: `1px solid ${safeColor('success')}40`
-                              }}>
-                                ✓ Correcta
-                              </span>
-                            ) : (
-                              <span style={{
-                                background: safeColor('error') + '20',
-                                color: safeColor('error'),
-                                padding: '6px 12px',
-                                borderRadius: '8px',
-                                fontSize: '0.8rem',
-                                fontWeight: '600',
-                                border: `1px solid ${safeColor('error')}40`
-                              }}>
-                                ✗ Incorrecta
-                              </span>
-                            )}
+                            Pregunta {index + 1}
                           </div>
+                          <h4 style={{
+                            fontSize: '1.1rem',
+                            fontWeight: '600',
+                            color: safeColor('textPrimary'),
+                            margin: 0,
+                            lineHeight: '1.4'
+                          }}>
+                            {question.question}
+                          </h4>
                         </div>
 
                         {/* Opciones de respuesta */}
@@ -1333,7 +1297,8 @@ const AdminStudentDetailPage = ({ onNavigate, student }) => {
                             background: safeColor('info') + '10',
                             borderRadius: '8px',
                             padding: '16px',
-                            border: `1px solid ${safeColor('info')}30`
+                            border: `1px solid ${safeColor('info')}30`,
+                            marginBottom: '16px'
                           }}>
                             <div style={{
                               fontSize: '0.9rem',
@@ -1355,6 +1320,45 @@ const AdminStudentDetailPage = ({ onNavigate, student }) => {
                             </p>
                           </div>
                         )}
+
+                        {/* Estado de la pregunta - Al final */}
+                        <div style={{
+                          display: 'flex',
+                          justifyContent: 'flex-end',
+                          marginTop: '16px'
+                        }}>
+                          {question.isCorrect ? (
+                            <span style={{
+                              background: safeColor('success') + '20',
+                              color: safeColor('success'),
+                              padding: '8px 16px',
+                              borderRadius: '8px',
+                              fontSize: '0.9rem',
+                              fontWeight: '600',
+                              border: `1px solid ${safeColor('success')}40`,
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px'
+                            }}>
+                              ✓ Correcta
+                            </span>
+                          ) : (
+                            <span style={{
+                              background: safeColor('error') + '20',
+                              color: safeColor('error'),
+                              padding: '8px 16px',
+                              borderRadius: '8px',
+                              fontSize: '0.9rem',
+                              fontWeight: '600',
+                              border: `1px solid ${safeColor('error')}40`,
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px'
+                            }}>
+                              ✗ Incorrecta
+                            </span>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>

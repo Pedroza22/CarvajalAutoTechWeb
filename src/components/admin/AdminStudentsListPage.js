@@ -108,8 +108,23 @@ const AdminStudentsListPage = ({ onNavigate }) => {
     setFilteredStudents(filtered);
   };
 
-  const handleStudentClick = (student) => {
-    setSelectedStudent(student);
+  const handleStudentClick = async (student) => {
+    console.log('🔍 Datos del estudiante seleccionado:', student);
+    console.log('🔍 correctAnswers:', student.correctAnswers);
+    console.log('🔍 totalQuestions:', student.totalQuestions);
+    
+    // Recargar los datos del estudiante para asegurar que estén actualizados
+    try {
+      const updatedStudentData = await StudentsService.getStudentDetail(student.id);
+      console.log('🔍 Datos actualizados del estudiante:', updatedStudentData);
+      console.log('🔍 totalAnswers en datos actualizados:', updatedStudentData.totalAnswers);
+      console.log('🔍 lastQuizInfo en datos actualizados:', updatedStudentData.lastQuizInfo);
+      setSelectedStudent(updatedStudentData);
+    } catch (error) {
+      console.error('❌ Error recargando datos del estudiante:', error);
+      setSelectedStudent(student); // Usar datos originales si falla
+    }
+    
     setShowStudentModal(true);
   };
 
@@ -565,48 +580,6 @@ const AdminStudentsListPage = ({ onNavigate }) => {
                 </div>
               </div>
 
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr',
-                gap: '16px'
-              }}>
-                <div>
-                  <label style={{
-                    fontSize: '0.9rem',
-                    fontWeight: '600',
-                    color: safeColor('textMuted'),
-                    marginBottom: '4px',
-                    display: 'block'
-                  }}>
-                    Quizzes Completados
-                  </label>
-                  <div style={{
-                    fontSize: '1.2rem',
-                    color: safeColor('primary'),
-                    fontWeight: '600'
-                  }}>
-                    {selectedStudent.totalQuizzes || 0}
-                  </div>
-                </div>
-                <div>
-                  <label style={{
-                    fontSize: '0.9rem',
-                    fontWeight: '600',
-                    color: safeColor('textMuted'),
-                    marginBottom: '4px',
-                    display: 'block'
-                  }}>
-                    Respuestas Correctas
-                  </label>
-                  <div style={{
-                    fontSize: '1.2rem',
-                    color: safeColor('success'),
-                    fontWeight: '600'
-                  }}>
-                    {selectedStudent.correctAnswers ? `${selectedStudent.correctAnswers} de ${selectedStudent.totalQuestions || 0}` : 'Sin respuestas'}
-                  </div>
-                </div>
-              </div>
 
               <div>
                 <label style={{
@@ -630,6 +603,54 @@ const AdminStudentsListPage = ({ onNavigate }) => {
                 </span>
               </div>
             </div>
+
+            {/* Información del último quiz */}
+            {selectedStudent.lastQuizInfo && (
+              <div style={{
+                background: safeColor('primary') + '10',
+                borderRadius: '12px',
+                padding: '16px',
+                border: `1px solid ${safeColor('primary')}30`,
+                marginTop: '16px'
+              }}>
+                <label style={{
+                  fontSize: '0.9rem',
+                  fontWeight: '600',
+                  color: safeColor('primary'),
+                  marginBottom: '8px',
+                  display: 'block'
+                }}>
+                  📝 Último Quiz Completado
+                </label>
+                <div style={{
+                  fontSize: '0.95rem',
+                  color: safeColor('textPrimary'),
+                  marginBottom: '4px'
+                }}>
+                  <strong>Categoría:</strong> {selectedStudent.lastQuizInfo.categoryName}
+                </div>
+                <div style={{
+                  fontSize: '0.9rem',
+                  color: safeColor('textMuted'),
+                  marginBottom: '4px'
+                }}>
+                  <strong>Completado:</strong> {new Date(selectedStudent.lastQuizInfo.completedAt).toLocaleDateString('es-ES', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                </div>
+                <div style={{
+                  fontSize: '0.9rem',
+                  color: selectedStudent.lastQuizInfo.isCorrect ? safeColor('success') : safeColor('error'),
+                  fontWeight: '600'
+                }}>
+                  <strong>Resultado:</strong> {selectedStudent.lastQuizInfo.isCorrect ? '✅ Correcta' : '❌ Incorrecta'}
+                </div>
+              </div>
+            )}
 
             <div style={{
               display: 'flex',

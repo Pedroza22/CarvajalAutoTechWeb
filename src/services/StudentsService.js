@@ -69,9 +69,10 @@ class StudentsService {
       }
 
       // 4) Obtener respuestas de todos los estudiantes de la página en una sola consulta
+      // Solo incluir respuestas de categorías que tienen preguntas
       const { data: answersBatch, error: answersBatchError } = await supabase
         .from('student_answers')
-        .select('student_id, is_correct, answered_at, questions(category_id)')
+        .select('student_id, is_correct, answered_at, questions!inner(category_id)')
         .in('student_id', studentIds);
 
       if (answersBatchError) {
@@ -130,10 +131,17 @@ class StudentsService {
     try {
       console.log('🔍 Obteniendo estadísticas del estudiante:', studentId);
       
-      // Obtener respuestas del estudiante
+      // Obtener respuestas del estudiante solo de categorías que tienen preguntas
       const { data: answers, error: answersError } = await supabase
         .from('student_answers')
-        .select('is_correct, answered_at')
+        .select(`
+          is_correct, 
+          answered_at,
+          category_id,
+          questions!inner (
+            category_id
+          )
+        `)
         .eq('student_id', studentId);
 
       if (answersError) {
@@ -224,8 +232,44 @@ class StudentsService {
         throw studentError;
       }
 
-      // Obtener estadísticas
-      const stats = await this.getStudentStats(studentId);
+      // Obtener estadísticas generales (todas las respuestas, no solo de categorías con preguntas)
+      const { data: allAnswers, error: allAnswersError } = await supabase
+        .from('student_answers')
+        .select('is_correct, answered_at, category_id, quiz_mode')
+        .eq('student_id', studentId)
+        .order('answered_at', { ascending: false });
+
+      if (allAnswersError) {
+        console.error('❌ Error obteniendo todas las respuestas:', allAnswersError);
+        throw allAnswersError;
+      }
+
+      const totalAnswers = allAnswers?.length || 0;
+      const correctAnswers = allAnswers?.filter(a => a.is_correct).length || 0;
+      const accuracy = totalAnswers > 0 ? Math.round((correctAnswers / totalAnswers) * 100) : 0;
+      const lastActivity = allAnswers?.length > 0 ? allAnswers[0].answered_at : null;
+
+      // Contar quizzes completados (agrupando por categoría y fecha)
+      const quizSessions = new Map();
+      allAnswers?.forEach(answer => {
+        const key = `${answer.category_id}_${new Date(answer.answered_at).toDateString()}`;
+        if (!quizSessions.has(key)) {
+          quizSessions.set(key, {
+            categoryId: answer.category_id,
+            date: answer.answered_at,
+            quizMode: answer.quiz_mode
+          });
+        }
+      });
+      const totalQuizzes = quizSessions.size;
+
+      const stats = {
+        totalAnswers,
+        correctAnswers,
+        totalQuizzes,
+        accuracy,
+        lastActivity
+      };
 
       // Obtener categorías asignadas con estadísticas
       const { data: categories, error: categoriesError } = await supabase
@@ -289,6 +333,13 @@ class StudentsService {
             .eq('category_id', category.category_id);
           
           const totalQuestions = categoryQuestions?.length || 0;
+          
+          // Solo procesar categorías que tienen preguntas
+          if (totalQuestions === 0) {
+            console.warn(`⚠️ Saltando categoría ${category.categories?.name} - no tiene preguntas`);
+            continue;
+          }
+          
           const correctAnswers = latestSession.filter(a => a.is_correct).length || 0;
           const incorrectAnswers = latestSession.length - correctAnswers; // Respuestas dadas menos correctas
           const accuracy = totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0;
@@ -333,6 +384,35 @@ class StudentsService {
         }
       }
 
+      // Obtener información del último quiz en modo quiz
+      const { data: lastQuizData, error: lastQuizError } = await supabase
+        .from('student_answers')
+        .select(`
+          answered_at,
+          quiz_mode,
+          is_correct,
+          questions!inner (
+            category_id,
+            categories (
+              name
+            )
+          )
+        `)
+        .eq('student_id', studentId)
+        .eq('quiz_mode', true) // Solo modo quiz
+        .order('answered_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      let lastQuizInfo = null;
+      if (lastQuizData && !lastQuizError) {
+        lastQuizInfo = {
+          categoryName: lastQuizData.questions?.categories?.name || 'Categoría desconocida',
+          completedAt: lastQuizData.answered_at,
+          isCorrect: lastQuizData.is_correct
+        };
+      }
+
       const studentDetail = {
         id: student.id,
         name: this.getDisplayName(student),
@@ -341,7 +421,8 @@ class StudentsService {
         totalAnswers: stats.totalAnswers,
         overallAccuracy: stats.accuracy,
         lastActivity: stats.lastActivity,
-        categoryStats
+        categoryStats,
+        lastQuizInfo
       };
 
       console.log('✅ Detalle del estudiante obtenido:', studentDetail);
@@ -569,9 +650,18 @@ class StudentsService {
         }
       }
 
-      // Convertir a array, filtrar categorías sin preguntas y calcular porcentajes
-      const quizHistory = Object.values(categoryStats)
-        .filter(quiz => quiz.totalQuestions > 0) // Solo mostrar categorías que tengan preguntas
+      // Filtrar categorías que no tienen preguntas (datos inconsistentes)
+      const validCategoryStats = {};
+      Object.keys(categoryStats).forEach(categoryId => {
+        if (categoryStats[categoryId].totalQuestions > 0) {
+          validCategoryStats[categoryId] = categoryStats[categoryId];
+        } else {
+          console.warn(`⚠️ Filtrando categoría ${categoryStats[categoryId].categoryName} - no tiene preguntas pero tiene respuestas`);
+        }
+      });
+
+      // Convertir a array y calcular porcentajes
+      const quizHistory = Object.values(validCategoryStats)
         .map(quiz => ({
           id: quiz.id,
           categoryName: quiz.categoryName,

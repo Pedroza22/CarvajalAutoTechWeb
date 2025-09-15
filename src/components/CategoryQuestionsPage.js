@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { getColor } from '../utils/constants';
 import StudentCategoriesService from '../services/StudentCategoriesService';
 import StudentsService from '../services/StudentsService';
@@ -69,25 +69,25 @@ const CategoryQuestionsPage = ({ category, user, onBack, onStartQuiz }) => {
       
       // Verificar si las explicaciones están habilitadas y el modo del quiz
       const explanationsStatus = await StudentCategoriesService.checkExplanationsEnabled(currentStudentId, category.id);
-      setExplanationsEnabled(explanationsStatus);
-      
-      // Verificar el modo del quiz
-      const { data: categoryData, error: categoryError } = await supabase
-        .from('student_categories')
-        .select('modo')
+        setExplanationsEnabled(explanationsStatus);
+        
+        // Verificar el modo del quiz
+        const { data: categoryData, error: categoryError } = await supabase
+          .from('student_categories')
+          .select('modo')
         .eq('student_id', currentStudentId)
-        .eq('category_id', category.id)
-        .single();
+          .eq('category_id', category.id)
+          .single();
         
       console.log('📊 Datos de categoría obtenidos:', { categoryData, categoryError });
-      
-      if (!categoryError && categoryData) {
-        const currentQuizMode = categoryData.modo !== false; // Default true si no está definido
-        setQuizMode(currentQuizMode);
-        console.log('📊 Modo del quiz:', currentQuizMode ? 'Puede hacer quiz' : 'Solo explicaciones');
-        
+          
+        if (!categoryError && categoryData) {
+          const currentQuizMode = categoryData.modo !== false; // Default true si no está definido
+          setQuizMode(currentQuizMode);
+          console.log('📊 Modo del quiz:', currentQuizMode ? 'Puede hacer quiz' : 'Solo explicaciones');
+          
         // Si modo = false, activar modo estudio interactivo (no mostrar explicaciones directamente)
-        if (!currentQuizMode) {
+          if (!currentQuizMode) {
           console.log('📚 Activando modo estudio interactivo');
           console.log('📚 Configurando quizStarted = true y quizStartTime');
           // Iniciar el quiz en modo estudio
@@ -100,9 +100,9 @@ const CategoryQuestionsPage = ({ category, user, onBack, onStartQuiz }) => {
       } else {
         console.log('⚠️ No se encontraron datos de categoría para el estudiante, usando modo quiz por defecto');
         setQuizMode(true); // Default a modo quiz
-      }
-      
-      console.log('📊 Explicaciones habilitadas:', explanationsStatus);
+        }
+        
+        console.log('📊 Explicaciones habilitadas:', explanationsStatus);
     } catch (error) {
       console.error('❌ Error cargando datos de categoría:', error);
     } finally {
@@ -432,8 +432,8 @@ const CategoryQuestionsPage = ({ category, user, onBack, onStartQuiz }) => {
       
       console.log('⏱️ Tiempo total del quiz:', totalTimeMinutes, 'minutos');
       
-      // Guardar respuestas en la base de datos con tiempo
-      await StudentCategoriesService.saveStudentAnswers(user.id, category.id, studentAnswers, totalTimeMinutes);
+      // Guardar respuestas en la base de datos con tiempo y modo
+      await StudentCategoriesService.saveStudentAnswers(user.id, category.id, studentAnswers, totalTimeMinutes, quizMode);
       
       // Calcular estadísticas
       const stats = await StudentCategoriesService.calculateQuizStats(user.id, category.id, studentAnswers);
@@ -560,7 +560,99 @@ const CategoryQuestionsPage = ({ category, user, onBack, onStartQuiz }) => {
     }
   };
 
-  const safeColor = (colorName) => getColor(colorName) || '#ffffff';
+  const safeColor = useCallback((colorName) => getColor(colorName) || '#ffffff', []);
+  
+  // Memoizar colores comunes para evitar re-renders
+  const colors = useMemo(() => ({
+    success: safeColor('success'),
+    error: safeColor('error'),
+    primary: safeColor('primary'),
+    cardBg: safeColor('cardBg'),
+    border: safeColor('border'),
+    textPrimary: safeColor('textPrimary'),
+    textMuted: safeColor('textMuted'),
+    warning: safeColor('warning')
+  }), [safeColor]);
+
+  // Memoizar función para mostrar modal de imagen
+  const showImageModal = useCallback((imageUrl) => {
+    const modal = document.createElement('div');
+    modal.id = 'image-modal';
+    modal.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.95);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 10000;
+      cursor: pointer;
+      backdrop-filter: blur(8px);
+    `;
+    
+    const img = document.createElement('img');
+    img.src = imageUrl;
+    img.style.cssText = `
+      max-width: 90%;
+      max-height: 90%;
+      object-fit: contain;
+      border-radius: 12px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.7);
+      border: 2px solid rgba(255, 255, 255, 0.1);
+      transition: transform 0.3s ease;
+    `;
+    
+    const closeBtn = document.createElement('div');
+    closeBtn.innerHTML = '✕';
+    closeBtn.style.cssText = `
+      position: absolute;
+      top: 20px;
+      right: 30px;
+      color: white;
+      font-size: 24px;
+      font-weight: bold;
+      cursor: pointer;
+      background: rgba(0, 0, 0, 0.7);
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s ease;
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      backdrop-filter: blur(4px);
+    `;
+    
+    closeBtn.onmouseover = () => {
+      closeBtn.style.background = 'rgba(239, 68, 68, 0.8)';
+      closeBtn.style.borderColor = 'rgba(239, 68, 68, 0.6)';
+      closeBtn.style.transform = 'scale(1.1)';
+    };
+    closeBtn.onmouseout = () => {
+      closeBtn.style.background = 'rgba(0, 0, 0, 0.7)';
+      closeBtn.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+      closeBtn.style.transform = 'scale(1)';
+    };
+    
+    modal.appendChild(img);
+    modal.appendChild(closeBtn);
+    document.body.appendChild(modal);
+    
+    const closeModal = () => {
+      const existingModal = document.getElementById('image-modal');
+      if (existingModal && existingModal.parentNode) {
+        existingModal.parentNode.removeChild(existingModal);
+      }
+    };
+    
+    closeBtn.onclick = closeModal;
+    modal.onclick = closeModal;
+    img.onclick = (e) => e.stopPropagation();
+  }, []);
 
 
   // Obtener studentId por email
@@ -703,34 +795,7 @@ const CategoryQuestionsPage = ({ category, user, onBack, onStartQuiz }) => {
     }
   };
 
-  // Log del estado actual para debugging
-  console.log('🔍 Estado actual del componente:', {
-    quizMode,
-    quizStarted,
-    quizCompleted,
-    showExplanations,
-    explanationsEnabled,
-    loading,
-    questionsCount: questions.length,
-    currentQuestionIndex,
-    studentId,
-    showAnswerFeedback,
-    answeredQuestions
-  });
-  
-  // Log específico para debugging del feedback
-  if (questions.length > 0) {
-    console.log('🎯 Estado del feedback para la primera pregunta:', {
-      questionId: questions[0].id,
-      showAnswerFeedback: showAnswerFeedback[questions[0].id],
-      answeredQuestions: answeredQuestions[questions[0].id],
-      correctAnswer: questions[0].correct_answer
-    });
-    
-    // Log más detallado
-    console.log('🎯 showAnswerFeedback completo:', showAnswerFeedback);
-    console.log('🎯 answeredQuestions completo:', answeredQuestions);
-  }
+  // Logs de debug removidos para evitar bucle infinito
 
   if (loading) {
     return (
@@ -1021,8 +1086,8 @@ const CategoryQuestionsPage = ({ category, user, onBack, onStartQuiz }) => {
                           </span>
                           <span style={{
                             fontSize: '0.8rem',
-                            color: safeColor('textMuted'),
-                            background: safeColor('border') + '33',
+                            color: colors.textMuted,
+                            background: colors.border + '33',
                             padding: '4px 8px',
                             borderRadius: '6px'
                           }}>
@@ -1031,8 +1096,8 @@ const CategoryQuestionsPage = ({ category, user, onBack, onStartQuiz }) => {
                           {question.time_limit && (
                             <span style={{
                               fontSize: '0.8rem',
-                              color: safeColor('warning'),
-                              background: safeColor('warning') + '20',
+                              color: colors.warning,
+                              background: colors.warning + '20',
                               padding: '4px 8px',
                               borderRadius: '6px'
                             }}>
@@ -1053,90 +1118,13 @@ const CategoryQuestionsPage = ({ category, user, onBack, onStartQuiz }) => {
                               cursor: 'pointer',
                               borderRadius: '8px',
                               overflow: 'hidden',
-                              border: `1px solid ${safeColor('border')}`,
+                              border: `1px solid ${colors.border}`,
                               transition: 'all 0.3s ease'
                             }}
-                            onClick={() => {
-                              // Crear modal para ampliar imagen
-                              const modal = document.createElement('div');
-                              modal.id = 'image-modal';
-                              modal.style.cssText = `
-                                position: fixed;
-                                top: 0;
-                                left: 0;
-                                width: 100%;
-                                height: 100%;
-                                background: rgba(0, 0, 0, 0.95);
-                                display: flex;
-                                justify-content: center;
-                                align-items: center;
-                                z-index: 10000;
-                                cursor: pointer;
-                                backdrop-filter: blur(8px);
-                              `;
-                              
-                              const img = document.createElement('img');
-                              img.src = question.image_url;
-                              img.style.cssText = `
-                                max-width: 90%;
-                                max-height: 90%;
-                                object-fit: contain;
-                                border-radius: 12px;
-                                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.7);
-                                border: 2px solid rgba(255, 255, 255, 0.1);
-                                transition: transform 0.3s ease;
-                              `;
-                              
-                              const closeBtn = document.createElement('div');
-                              closeBtn.innerHTML = '✕';
-                              closeBtn.style.cssText = `
-                                position: absolute;
-                                top: 20px;
-                                right: 30px;
-                                color: white;
-                                font-size: 24px;
-                                font-weight: bold;
-                                cursor: pointer;
-                                background: rgba(0, 0, 0, 0.7);
-                                width: 44px;
-                                height: 44px;
-                                border-radius: 50%;
-                                display: flex;
-                                align-items: center;
-                                justify-content: center;
-                                transition: all 0.3s ease;
-                                border: 2px solid rgba(255, 255, 255, 0.2);
-                                backdrop-filter: blur(4px);
-                              `;
-                              closeBtn.onmouseover = () => {
-                                closeBtn.style.background = 'rgba(239, 68, 68, 0.8)';
-                                closeBtn.style.borderColor = 'rgba(239, 68, 68, 0.6)';
-                                closeBtn.style.transform = 'scale(1.1)';
-                              };
-                              closeBtn.onmouseout = () => {
-                                closeBtn.style.background = 'rgba(0, 0, 0, 0.7)';
-                                closeBtn.style.borderColor = 'rgba(255, 255, 255, 0.2)';
-                                closeBtn.style.transform = 'scale(1)';
-                              };
-                              
-                              modal.appendChild(img);
-                              modal.appendChild(closeBtn);
-                              document.body.appendChild(modal);
-                              
-                              const closeModal = () => {
-                                const existingModal = document.getElementById('image-modal');
-                                if (existingModal && existingModal.parentNode) {
-                                  existingModal.parentNode.removeChild(existingModal);
-                                }
-                              };
-                              
-                              closeBtn.onclick = closeModal;
-                              modal.onclick = closeModal;
-                              img.onclick = (e) => e.stopPropagation();
-                            }}
+                            onClick={() => showImageModal(question.image_url)}
                             onMouseEnter={(e) => {
                               e.target.style.transform = 'scale(1.02)';
-                              e.target.style.boxShadow = `0 4px 15px ${safeColor('primary')}40`;
+                              e.target.style.boxShadow = `0 4px 15px ${colors.primary}40`;
                             }}
                             onMouseLeave={(e) => {
                               e.target.style.transform = 'scale(1)';
@@ -1158,16 +1146,16 @@ const CategoryQuestionsPage = ({ category, user, onBack, onStartQuiz }) => {
 
                         {/* Pregunta */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
-                          <h4 style={{
-                            fontSize: '1.1rem',
-                            fontWeight: '600',
-                            color: safeColor('textPrimary'),
+                        <h4 style={{
+                          fontSize: '1.1rem',
+                          fontWeight: '600',
+                          color: safeColor('textPrimary'),
                             margin: 0,
                             lineHeight: '1.4',
                             flex: 1
-                          }}>
-                            {question.question}
-                          </h4>
+                        }}>
+                          {question.question}
+                        </h4>
                           {/* Indicador de pregunta respondida en modo estudio */}
                           {!quizMode && answeredQuestions[question.id] && (
                             <div style={{
@@ -1228,69 +1216,42 @@ const CategoryQuestionsPage = ({ category, user, onBack, onStartQuiz }) => {
                                 // FORZAR mostrar la respuesta correcta si estamos en modo estudio y se ha mostrado la explicación
                                 const forceShowCorrect = !quizMode && showAnswerFeedback[question.id] && isCorrect;
                                 
-                                // Debug logs para la primera pregunta
-                                if (question.id === questions[0]?.id) {
-                                  console.log('🎯 Debug opción', optionKey, ':', {
-                                    isSelected,
-                                    isCorrect,
-                                    showAnswerFeedback: showAnswerFeedback[question.id],
-                                    showCorrect,
-                                    shouldShowCorrect,
-                                    forceShowCorrect,
-                                    showIncorrect,
-                                    quizMode,
-                                    showResults,
-                                    questionId: question.id,
-                                    correctAnswer: question.correct_answer
-                                  });
-                                }
+                                // Debug logs removidos para evitar bucle infinito
                                 
                                 return (
                                   <button
                                     key={optIndex}
                                     onClick={() => {
-                                      console.log('🖱️ Botón clickeado:', { 
-                                        questionId: question.id, 
-                                        optionKey, 
-                                        quizMode, 
-                                        answered: answeredQuestions[question.id],
-                                        showResults 
-                                      });
-                                      
                                       // En modo estudio, solo permitir responder si no ha respondido aún
                                       // En modo quiz, solo permitir si no se han mostrado resultados
                                       if (!quizMode && !answeredQuestions[question.id]) {
-                                        console.log('📚 Modo estudio - permitiendo respuesta');
                                         handleAnswerSelect(question.id, optionKey);
                                       } else if (quizMode && !showResults) {
-                                        console.log('🎮 Modo quiz - permitiendo respuesta');
                                         handleAnswerSelect(question.id, optionKey);
-                                      } else {
-                                        console.log('❌ Respuesta bloqueada');
                                       }
                                     }}
                                     disabled={(quizMode && showResults) || (!quizMode && answeredQuestions[question.id])}
                                     style={{
                                       padding: '16px 20px',
                                       background: forceShowCorrect 
-                                        ? safeColor('success') + '20' 
+                                        ? colors.success + '20' 
                                         : showIncorrect 
-                                          ? safeColor('error') + '20'
+                                          ? colors.error + '20'
                                           : isSelected 
-                                            ? safeColor('primary') + '20'
-                                            : safeColor('cardBg'),
+                                            ? colors.primary + '20'
+                                            : colors.cardBg,
                                       borderRadius: '12px',
                                       border: `2px solid ${
                                         forceShowCorrect 
-                                          ? safeColor('success')
+                                          ? colors.success
                                           : showIncorrect 
-                                            ? safeColor('error')
+                                            ? colors.error
                                             : isSelected 
-                                              ? safeColor('primary')
-                                              : safeColor('border') + '33'
+                                              ? colors.primary
+                                              : colors.border + '33'
                                       }`,
                                       fontSize: '1rem',
-                                      color: safeColor('textPrimary'),
+                                      color: colors.textPrimary,
                                       cursor: showResults ? 'default' : 'pointer',
                                       transition: 'all 0.2s',
                                       textAlign: 'left',
@@ -1307,8 +1268,8 @@ const CategoryQuestionsPage = ({ category, user, onBack, onStartQuiz }) => {
                                       {optionKey}.
                                     </span>
                                     <span>{option}</span>
-                                    {forceShowCorrect && <span style={{ color: safeColor('success'), fontSize: '1.2rem' }}>✓</span>}
-                                    {showIncorrect && <span style={{ color: safeColor('error'), fontSize: '1.2rem' }}>✗</span>}
+                                    {forceShowCorrect && <span style={{ color: colors.success, fontSize: '1.2rem' }}>✓</span>}
+                                    {showIncorrect && <span style={{ color: colors.error, fontSize: '1.2rem' }}>✗</span>}
                                   </button>
                                 );
                               })}
